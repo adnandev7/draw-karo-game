@@ -1,0 +1,22 @@
+# Render.com blueprint — deploys the game server on the free tier.
+# One-time setup: Render Dashboard → New → Blueprint → point at this repo.
+services:
+  - type: web
+    name: draw-karo-server
+    runtime: node
+    plan: free
+    rootDir: apps/server
+    buildCommand: npm ci --include-workspace-root=false && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LIVEKIT_URL
+        sync: false # set in Render dashboard (M4)
+      - key: LIVEKIT_API_KEY
+        sync: false # set in Render dashboard (M4)
+      - key: LIVEKIT_API_SECRET
+        sync: false # set in Render dashboard (M4)
+      - key: CORS_ORIGIN
+        value: "*"

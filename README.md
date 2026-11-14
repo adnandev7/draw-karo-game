@@ -1,0 +1,29 @@
+# Draw Karo 🎨
+
+> Desi draw-and-guess party game — skribbl.io ka core, Desi Avatar Studio, Hinglish
+> word packs, reactions, voice chat aur Funniest Drawing Award ke saath.
+> **Strict ₹0** — see `IMPLEMENTATION_PLAN.md` §13.
+
+Monorepo layout (npm workspaces):
+
+```
+apps/
+  mobile/    Expo app (Android / iOS / Web) — Expo Router + Skia canvas
+  server/    Node.js authoritative game server (Express + Socket.IO)
+packages/
+  shared/    TypeScript types, socket event contract, scoring logic
+  words/     Desi word packs (Bollywood, Indian Food, Memes, ...)
+```
+
+## Local development (first time)
+
+```bash
+npm install            # installs all workspaces
+npm run build:packages # compiles shared + words
+npm run dev:server     # game server on http://localhost:4000 (GET /health)
+npm run start:mobile   # Expo dev server (then press a / w or scan QR)
+```
+
+## Milestones
+
+See `IMPLEMENTATION_PLAN.md` §10. M0 = this skeleton.

@@ -1,0 +1,22 @@
+{
+  "name": "draw-karo",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Draw Karo — desi draw-and-guess party game (Android/iOS/Web)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w @drawkaro/shared && npm run build -w @drawkaro/words",
+    "dev:server": "npm run dev -w @drawkaro/server",
+    "start:mobile": "npm run start -w mobile",
+    "typecheck": "npm run typecheck -w @drawkaro/shared && npm run typecheck -w @drawkaro/words && npm run typecheck -w @drawkaro/server"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
