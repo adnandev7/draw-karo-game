@@ -5,6 +5,7 @@
 import { useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ChatEntry } from "@drawkaro/shared";
+import { t } from "../../lib/strings";
 
 type Props = {
   entries: ChatEntry[];
@@ -48,7 +49,7 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
       />
       {guessedCurrent ? (
         <View style={styles.guessedBanner}>
-          <Text style={styles.guessedText}>🎉 You guessed it! Chill karo ab</Text>
+          <Text style={styles.guessedText}>{t.youGuessed}</Text>
         </View>
       ) : (
         <View style={styles.inputRow}>
@@ -56,7 +57,7 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder={isDrawer ? "Chat (guessers guessing)..." : "Type your guess here..."}
+            placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
             placeholderTextColor="#8fb4d9"
             onSubmitEditing={submit}
             returnKeyType="send"

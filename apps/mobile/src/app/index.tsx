@@ -4,8 +4,8 @@
  */
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { Canvas, Circle, Fill } from "@shopify/react-native-skia";
 import { useRouter } from "expo-router";
+import { t } from "../lib/strings";
 import { useGame } from "../store/game";
 
 export default function HomeScreen() {
@@ -29,21 +29,20 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Canvas style={styles.art}>
-        <Fill color="#208AEF" />
-        <Circle cx={80} cy={60} r={38} color="#ffd700" />
-        <Circle cx={190} cy={40} r={26} color="#e5484d" />
-        <Circle cx={260} cy={80} r={30} color="#1a9e4b" />
-      </Canvas>
+      <View style={styles.art}>
+        <View style={[styles.dot, { backgroundColor: "#ffd700", width: 76, height: 76, top: -6, left: 30 }]} />
+        <View style={[styles.dot, { backgroundColor: "#e5484d", width: 52, height: 52, top: -20, left: 150 }]} />
+        <View style={[styles.dot, { backgroundColor: "#1a9e4b", width: 60, height: 60, top: 6, left: 220 }]} />
+      </View>
 
       <Text style={styles.title}>Draw Karo!</Text>
-      <Text style={styles.tagline}>Banao. Pehchano. Haso. 🎨</Text>
+      <Text style={styles.tagline}>{t.tagline}</Text>
 
       <TextInput
         style={styles.nameInput}
         value={profile.name}
         onChangeText={setName}
-        placeholder="Tumhara naam?"
+        placeholder={t.namePlaceholder}
         placeholderTextColor="#9fc9f5"
         maxLength={16}
         autoCapitalize="words"
@@ -54,7 +53,7 @@ export default function HomeScreen() {
           style={[styles.nameInput, styles.codeInput]}
           value={code}
           onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
-          placeholder="Room code (e.g. K7TP)"
+          placeholder={t.roomCodePlaceholder}
           placeholderTextColor="#9fc9f5"
           autoCapitalize="characters"
         />
@@ -67,7 +66,7 @@ export default function HomeScreen() {
           onPress={() => joinRoom(code)}
         >
           <Text style={[styles.btnText, styles.btnSecondaryText]}>
-            {busy ? "Connecting..." : "Join Room 🚪"}
+            {busy ? t.connecting : t.joinRoom}
           </Text>
         </Pressable>
       ) : (
@@ -77,20 +76,20 @@ export default function HomeScreen() {
           onPress={() => createRoom()}
         >
           <Text style={[styles.btnText, styles.btnPrimaryText]}>
-            {busy ? "Connecting..." : "Naya Room Banao 🎨"}
+            {busy ? t.connecting : t.createRoom}
           </Text>
         </Pressable>
       )}
 
       <Pressable style={styles.linkBtn} onPress={() => setJoinMode((v) => !v)}>
         <Text style={styles.linkText}>
-          {joinMode ? "← Naya room banao" : "Code se join karo 🔑"}
+          {joinMode ? t.backToCreate : t.joinWithCode}
         </Text>
       </Pressable>
 
       {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
 
-      <Text style={styles.footer}>Free forever · Room code dost ko bhejo aur khelo 🎉</Text>
+      <Text style={styles.footer}>{t.footer}</Text>
     </View>
   );
 }
@@ -104,7 +103,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 14,
   },
-  art: { width: 320, height: 130, borderRadius: 20, overflow: "hidden" },
+  art: {
+    width: 320,
+    height: 130,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "#1b6ec2",
+  },
+  dot: { position: "absolute", borderRadius: 99 },
   title: {
     fontSize: 44,
     fontWeight: "900",

@@ -15,8 +15,9 @@ import {
 import { useRouter } from "expo-router";
 import { availablePackIds, WORD_PACKS } from "@drawkaro/words";
 import type { WordPackId } from "@drawkaro/shared";
+import { t } from "../lib/strings";
 import { useGame } from "../store/game";
-import { DrawCanvas } from "../components/game/DrawCanvas";
+import { DrawCanvasLazy } from "../components/game/DrawCanvasLazy";
 import { Toolbar } from "../components/game/Toolbar";
 import { ChatPanel } from "../components/game/ChatPanel";
 import { PlayerStrip } from "../components/game/PlayerStrip";
@@ -95,7 +96,13 @@ function Header({
     <View style={styles.header}>
       <Text style={styles.code}>#{code}</Text>
       <Text style={styles.phase}>
-        {phase === "lobby" ? "Lobby" : phase === "selecting" ? "Word chun raha hai..." : phase === "drawing" ? `Round ${round}/${total}` : "Phir se!"}
+        {phase === "lobby"
+          ? t.lobby
+          : phase === "selecting"
+            ? t.pickingWord
+            : phase === "drawing"
+              ? t.roundLabel(round, total)
+              : t.waitingNext}
       </Text>
     </View>
   );
@@ -118,35 +125,37 @@ function LobbyView({ isHost }: { isHost: boolean }) {
   return (
     <ScrollView style={styles.lobby} contentContainerStyle={styles.lobbyContent}>
       <View style={styles.inviteCard}>
-        <Text style={styles.inviteLabel}>Invite code — dost ko bhejo!</Text>
+        <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
         <Text style={styles.inviteCode}>{room.code}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Players ({room.players.length}/{room.settings.maxPlayers})</Text>
+      <Text style={styles.sectionTitle}>
+        {t.players} ({room.players.length}/{room.settings.maxPlayers})
+      </Text>
       <PlayerStrip players={room.players} />
 
       {isHost ? (
         <>
-          <Text style={styles.sectionTitle}>Settings (sirf host)</Text>
+          <Text style={styles.sectionTitle}>{t.settingsHostOnly}</Text>
           <View style={styles.settingsCard}>
             <Stepper
-              label="Rounds"
+              label={t.rounds}
               value={room.settings.rounds}
               onChange={(v) => updateSettings({ rounds: v })}
             />
             <Stepper
-              label="Draw time (sec)"
+              label={t.drawTime}
               value={room.settings.drawTimeSec}
               step={10}
               onChange={(v) => updateSettings({ drawTimeSec: v })}
             />
             <Stepper
-              label="Hints"
+              label={t.hints}
               value={room.settings.hints}
               max={3}
               onChange={(v) => updateSettings({ hints: v })}
             />
-            <Text style={styles.settingLabel}>Word packs</Text>
+            <Text style={styles.settingLabel}>{t.wordPacks}</Text>
             <View style={styles.packRow}>
               {availablePackIds().map((id) => (
                 <Pressable
@@ -163,14 +172,12 @@ function LobbyView({ isHost }: { isHost: boolean }) {
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.settingHint}>
-              Inside Joke Mode (custom words) M5 mein aayega 🤫
-            </Text>
+            <Text style={styles.settingHint}>{t.insideJokeHint}</Text>
           </View>
         </>
       ) : (
         <Text style={styles.hostNote}>
-          👑 {room.players.find((p) => p.isHost)?.name} settings control karta hai
+          {t.hostControls(room.players.find((p) => p.isHost)?.name ?? "?")}
         </Text>
       )}
 
@@ -180,7 +187,7 @@ function LobbyView({ isHost }: { isHost: boolean }) {
         onPress={startGame}
       >
         <Text style={styles.startText}>
-          {!isHost ? "Host start karega..." : !canStart ? "2+ players chahiye" : "Shuru Karo! 🚀"}
+          {!isHost ? t.waitingForHost : !canStart ? t.needPlayers : t.startGame}
         </Text>
       </Pressable>
 
@@ -235,7 +242,7 @@ function GameView({ isDrawer }: { isDrawer: boolean }) {
         )}
       </View>
 
-      <DrawCanvas
+      <DrawCanvasLazy
         isDrawer={isDrawer}
         strokes={room.strokes}
         color={color}

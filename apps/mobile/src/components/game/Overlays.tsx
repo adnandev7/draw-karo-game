@@ -1,6 +1,7 @@
 /** Full-screen overlays: word choice, turn end, round end, game podium. */
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { LeaderboardEntry, TurnResultEntry } from "@drawkaro/shared";
+import { t } from "../../lib/strings";
 import { useGame } from "../../store/game";
 
 function Card({ children }: { children: React.ReactNode }) {
@@ -15,8 +16,8 @@ export function WordChoiceOverlay({ words }: { words: string[] }) {
   const choose = useGame((s) => s.chooseWord);
   return (
     <Card>
-      <Text style={styles.heading}>Tumhari baari! 🎨</Text>
-      <Text style={styles.sub}>Ek word chuno aur banao</Text>
+      <Text style={styles.heading}>{t.yourTurn}</Text>
+      <Text style={styles.sub}>{t.pickWordSub}</Text>
       {words.map((w) => (
         <Pressable key={w} style={styles.choice} onPress={() => choose(words.indexOf(w))}>
           <Text style={styles.choiceText}>{w}</Text>
@@ -39,9 +40,9 @@ export function TurnEndOverlay({
   const nameOf = (id: string) => room?.players.find((p) => p.id === id)?.name ?? "someone";
   return (
     <Card>
-      <Text style={styles.sub}>The word was</Text>
+      <Text style={styles.sub}>{t.theWordWas}</Text>
       <Text style={styles.bigWord}>{word}</Text>
-      <Text style={styles.sub}>Drawn by {nameOf(drawerId)}</Text>
+      <Text style={styles.sub}>{t.drawnBy(nameOf(drawerId))}</Text>
       <View style={styles.results}>
         {results.map((r) => {
           const p = room?.players.find((pl) => pl.id === r.playerId);
@@ -55,7 +56,7 @@ export function TurnEndOverlay({
           );
         })}
       </View>
-      <Text style={styles.sub}>Next turn aane wala hai...</Text>
+      <Text style={styles.sub}>{t.nextTurnComing}</Text>
     </Card>
   );
 }
@@ -69,7 +70,7 @@ export function RoundEndOverlay({
 }) {
   return (
     <Card>
-      <Text style={styles.heading}>Round {round} khatam! 🏁</Text>
+      <Text style={styles.heading}>{t.roundDone(round)}</Text>
       <View style={styles.results}>
         {leaderboard.map((e) => (
           <View key={e.playerId} style={styles.resultRow}>
@@ -87,7 +88,7 @@ export function RoundEndOverlay({
 export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
   return (
     <Card>
-      <Text style={styles.heading}>🏆 Winner Winner!</Text>
+      <Text style={styles.heading}>{t.winnerWinner}</Text>
       {podium.slice(0, 3).map((e) => (
         <View key={e.playerId} style={styles.resultRow}>
           <Text style={styles.resultName}>
@@ -96,7 +97,7 @@ export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
           <Text style={styles.resultPoints}>{e.score}</Text>
         </View>
       ))}
-      <Text style={styles.sub}>Rematch lobby mein aa raha hai...</Text>
+      <Text style={styles.sub}>{t.rematchComing}</Text>
     </Card>
   );
 }

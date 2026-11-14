@@ -198,7 +198,7 @@ export class Room {
       socket.data.roomCode = this.code;
       socket.join(this.channel);
       this.sockets.set(profile.profileId, socket);
-      this.systemMsg(`${profile.name} wapas aa gaya!`);
+      this.systemMsg(`${profile.name} is back!`);
       this.broadcastState();
       return { ok: true, roomState: this.state() };
     }
@@ -256,7 +256,7 @@ export class Room {
       const p = this.players.get(profileId);
       if (p && !p.connected) this.finalizeRemoval(profileId);
     }, DISCONNECT_GRACE_MS);
-    this.systemMsg(`${player.name} ka network chala gaya... reconnect ho sakta hai`);
+    this.systemMsg(`${player.name} lost connection — they can still reconnect`);
     this.broadcastState();
   }
 
@@ -297,7 +297,7 @@ export class Room {
       this.round = 0;
       this.turn = 0;
       this.drawerId = null;
-      this.systemMsg("Kam players — game lobby mein wapas. Aur dost bula lo!");
+      this.systemMsg("Not enough players — back to the lobby. Invite some friends!");
     }
     this.broadcastState();
   }
@@ -326,9 +326,10 @@ export class Room {
 
   startGame(): { ok: boolean; error?: string } {
     if (this.phase !== "lobby") return { ok: false, error: "Game already started" };
-    if (this.players.size < 2) return { ok: false, error: "Kam se kam 2 players chahiye!" };
+    if (this.players.size < 2) return { ok: false, error: "You need at least 2 players!" };
+
     if (this.wordPool().length === 0) {
-      return { ok: false, error: "Koi words nahi mile — word packs ya custom words add karo" };
+      return { ok: false, error: "No words available — add word packs or custom words" };
     }
     for (const p of this.players.values()) {
       p.score = 0;
@@ -344,7 +345,7 @@ export class Room {
 
   private nextTurn(): void {
     const order = [...this.players.keys()];
-    if (order.length < 2) return this.backToLobby("Kam players — game cancel!");
+    if (order.length < 2) return this.backToLobby("Not enough players — game cancelled!");
     this.turn++;
     if (this.turn > order.length) return this.endRound();
 
@@ -552,7 +553,7 @@ export class Room {
         if (this.allGuessed()) this.endTurn();
       } else if (this.word && isGuessClose(text, this.word.word)) {
         const socket = this.sockets.get(senderId);
-        socket?.emit("guess:close", "Bohot close! Thoda aur socho 🔍");
+        socket?.emit("guess:close", "So close! Keep guessing 🔍");
         this.pushChat(senderId, text, "chat");
       } else {
         this.pushChat(senderId, text, "chat");

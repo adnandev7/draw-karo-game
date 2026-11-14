@@ -14,7 +14,7 @@ const FLUSH_MS = 50;
 /** Ignore points closer than this (in normalized units) to keep payloads small. */
 const MIN_POINT_DIST = 0.006;
 
-type Props = {
+export type DrawCanvasProps = {
   isDrawer: boolean;
   strokes: Stroke[];
   color: string;
@@ -22,6 +22,8 @@ type Props = {
   tool: "brush" | "eraser";
   onBatch: (delta: StrokeDelta) => void;
 };
+
+type Props = DrawCanvasProps;
 
 function buildSkPath(stroke: Stroke, size: number): SkPath {
   const builder = Skia.PathBuilder.Make();

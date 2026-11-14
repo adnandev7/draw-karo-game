@@ -63,7 +63,7 @@ io.on("connection", (socket) => {
   socket.on("room:join", (code, profile, cb) => {
     if (!validProfile(profile)) return cb({ ok: false, error: "Invalid profile" });
     const room = rooms.get(String(code));
-    if (!room) return cb({ ok: false, error: "Room nahi mila — code check karo" });
+    if (!room) return cb({ ok: false, error: "Room not found — double-check the code" });
     const res = room.join(socket, profile, false);
     if (res.ok) roomCode = room.code;
     cb(res);
