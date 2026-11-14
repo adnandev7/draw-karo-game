@@ -1,32 +1,22 @@
 /**
- * Draw Karo — authoritative game server (M0 skeleton).
- *
- * M0 scope: HTTP health check + Socket.IO wiring + connection lifecycle.
- * The full room manager / state machine lands in M1 — the socket contract
- * (@drawkaro/shared) is already wired here so events can be filled in one by one.
+ * Draw Karo — authoritative game server (M1).
+ * HTTP health check + Socket.IO wiring to the room state machine.
  */
 import http from "node:http";
 import cors from "cors";
-import express from "express";
-import { Server, type Socket } from "socket.io";
-import type { ClientToServerEvents, ServerToClientEvents } from "@drawkaro/shared";
+import express, { type Express } from "express";
+import { Server } from "socket.io";
+import type { ClientToServerEvents, RoomSettings, ServerToClientEvents } from "@drawkaro/shared";
+import { RoomManager, type SocketData, type Profile } from "./room";
 
 const PORT = Number(process.env.PORT || 4000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 
-type InterServerEvents = Record<string, never>;
-type SocketData = { playerName?: string; roomCode?: string };
-
-const app = express();
+const app: Express = express();
 app.use(cors({ origin: CORS_ORIGIN }));
 
-// Health check — used by Render / uptime monitors.
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "draw-karo-server", time: new Date().toISOString() });
-});
-
 const httpServer = http.createServer(app);
-const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
+const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<never, never>, SocketData>(
   httpServer,
   {
     cors: { origin: CORS_ORIGIN },
@@ -35,16 +25,148 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
   }
 );
 
-io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
-  const who = socket.id;
-  console.log(`[socket] connected: ${who}`);
+const rooms = new RoomManager(io);
+setInterval(() => rooms.sweep(), 30_000).unref();
 
-  socket.on("disconnect", (reason) => {
-    console.log(`[socket] disconnected: ${who} (${reason})`);
+// Health check — used by Render / uptime monitors. Defined after io init so
+// the room count is live.
+app.get("/health", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "draw-karo-server",
+    rooms: rooms.count,
+    time: new Date().toISOString(),
+  });
+});
+
+io.on("connection", (socket) => {
+  let roomCode: string | null = null;
+
+  const withRoom = () => (roomCode ? rooms.get(roomCode) ?? null : null);
+
+  socket.on("room:create", (settings, profile, cb) => {
+    if (!validProfile(profile)) return cb({ ok: false, error: "Invalid profile" });
+    const room = rooms.create();
+    const res = room.join(socket, profile, true);
+    if (!res.ok) {
+      room.destroy();
+      return cb(res);
+    }
+    if (settings && typeof settings === "object") {
+      room.updateSettings({ ...settings } as Partial<RoomSettings>);
+    }
+    roomCode = room.code;
+    console.log(`[rooms] ${room.code} created by ${profile.name}`);
+    cb(res);
   });
 
-  // M1: room:create / room:join / game flow handlers go here.
+  socket.on("room:join", (code, profile, cb) => {
+    if (!validProfile(profile)) return cb({ ok: false, error: "Invalid profile" });
+    const room = rooms.get(String(code));
+    if (!room) return cb({ ok: false, error: "Room nahi mila — code check karo" });
+    const res = room.join(socket, profile, false);
+    if (res.ok) roomCode = room.code;
+    cb(res);
+  });
+
+  socket.on("room:leave", () => {
+    const room = withRoom();
+    if (room && socket.data.profileId) {
+      room.playerDisconnected(socket.data.profileId, true);
+    }
+    if (roomCode) socket.leave(`room:${roomCode}`);
+    roomCode = null;
+  });
+
+  socket.on("room:settings", (patch) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    const host = room.players.get(socket.data.profileId);
+    if (!host?.isHost) return;
+    room.updateSettings(patch);
+  });
+
+  socket.on("game:start", () => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    const host = room.players.get(socket.data.profileId);
+    if (!host?.isHost) return;
+    const res = room.startGame();
+    if (!res.ok && res.error) {
+      socket.emit("error", { code: "start_failed", message: res.error });
+    }
+  });
+
+  socket.on("word:choose", (index) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.chooseWord(index);
+  });
+
+  socket.on("draw:stroke", (delta) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId || !delta) return;
+    room.addStrokeBatch(socket.data.profileId, delta);
+  });
+
+  socket.on("draw:undo", () => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.undoStroke(socket.data.profileId);
+  });
+
+  socket.on("draw:clear", () => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.clearStrokes(socket.data.profileId);
+  });
+
+  socket.on("guess:text", (text) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.submitGuess(socket.data.profileId, String(text ?? ""));
+  });
+
+  socket.on("chat:msg", (text) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.chatMessage(socket.data.profileId, String(text ?? ""));
+  });
+
+  socket.on("reaction:send", (emoji) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.sendReaction(socket.data.profileId, String(emoji ?? ""));
+  });
+
+  socket.on("host:kick", (playerId) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.kick(socket.data.profileId, String(playerId ?? ""));
+  });
+
+  socket.on("host:mute", () => {
+    // M4 (voice) — reserved
+  });
+
+  socket.on("disconnect", () => {
+    const room = withRoom();
+    if (room && socket.data.profileId) {
+      room.playerDisconnected(socket.data.profileId, false);
+    }
+  });
 });
+
+function validProfile(p: Profile | undefined): p is Profile {
+  return (
+    !!p &&
+    typeof p.profileId === "string" &&
+    p.profileId.length >= 8 &&
+    typeof p.name === "string" &&
+    p.name.trim().length >= 1 &&
+    !!p.avatar
+  );
+}
 
 httpServer.listen(PORT, () => {
   console.log(`[draw-karo] server listening on :${PORT}`);

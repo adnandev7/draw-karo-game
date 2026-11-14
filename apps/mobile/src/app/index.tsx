@@ -1,34 +1,96 @@
 /**
- * Draw Karo — Home screen (M0 skeleton).
- * Placeholder identity + a Skia canvas smoke test proving the native
- * drawing engine loads. Real Home flow (name + avatar + rooms) lands in M1.
+ * Draw Karo — Home screen.
+ * Name + avatar → Create Room / Join with code. Navigates to /room on success.
  */
-import { StyleSheet, Text, View } from "react-native";
-import { Canvas, Circle, Fill, RoundedRect } from "@shopify/react-native-skia";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Canvas, Circle, Fill } from "@shopify/react-native-skia";
+import { useRouter } from "expo-router";
+import { useGame } from "../store/game";
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const profile = useGame((s) => s.profile);
+  const setName = useGame((s) => s.setName);
+  const connection = useGame((s) => s.connection);
+  const errorMsg = useGame((s) => s.errorMsg);
+  const room = useGame((s) => s.room);
+  const createRoom = useGame((s) => s.createRoom);
+  const joinRoom = useGame((s) => s.joinRoom);
+  const [code, setCode] = useState("");
+  const [joinMode, setJoinMode] = useState(false);
+
+  useEffect(() => {
+    if (room) router.replace("/room");
+  }, [room, router]);
+
+  const busy = connection === "connecting";
+  const canJoin = profile.name.trim().length >= 1 && code.trim().length === 4;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Draw Karo!</Text>
-        <Text style={styles.tagline}>Banao. Pehchano. Haso. 🎨</Text>
-      </View>
+      <Canvas style={styles.art}>
+        <Fill color="#208AEF" />
+        <Circle cx={80} cy={60} r={38} color="#ffd700" />
+        <Circle cx={190} cy={40} r={26} color="#e5484d" />
+        <Circle cx={260} cy={80} r={30} color="#1a9e4b" />
+      </Canvas>
 
-      {/* M0 smoke test: if this paints, the native Skia engine works */}
-      <View style={styles.canvasWrap}>
-        <Canvas style={styles.canvas}>
-          <Fill color="#fdf6e3" />
-          <RoundedRect x={20} y={20} width={280} height={180} r={16} color="#ffffff" />
-          <Circle cx={80} cy={110} r={34} color="#f4a300" />
-          <Circle cx={160} cy={90} r={26} color="#e5484d" />
-          <Circle cx={230} cy={120} r={30} color="#2c8ad8" />
-        </Canvas>
-      </View>
+      <Text style={styles.title}>Draw Karo!</Text>
+      <Text style={styles.tagline}>Banao. Pehchano. Haso. 🎨</Text>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>M0 skeleton running 🛠️</Text>
-        <Text style={styles.footerSub}>Play Now & Join Room arrive in M1</Text>
-      </View>
+      <TextInput
+        style={styles.nameInput}
+        value={profile.name}
+        onChangeText={setName}
+        placeholder="Tumhara naam?"
+        placeholderTextColor="#9fc9f5"
+        maxLength={16}
+        autoCapitalize="words"
+      />
+
+      {joinMode ? (
+        <TextInput
+          style={[styles.nameInput, styles.codeInput]}
+          value={code}
+          onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
+          placeholder="Room code (e.g. K7TP)"
+          placeholderTextColor="#9fc9f5"
+          autoCapitalize="characters"
+        />
+      ) : null}
+
+      {joinMode ? (
+        <Pressable
+          style={[styles.btn, styles.btnSecondary, (!canJoin || busy) && styles.disabled]}
+          disabled={!canJoin || busy}
+          onPress={() => joinRoom(code)}
+        >
+          <Text style={[styles.btnText, styles.btnSecondaryText]}>
+            {busy ? "Connecting..." : "Join Room 🚪"}
+          </Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          style={[styles.btn, profile.name.trim() ? null : styles.disabled]}
+          disabled={!profile.name.trim() || busy}
+          onPress={() => createRoom()}
+        >
+          <Text style={[styles.btnText, styles.btnPrimaryText]}>
+            {busy ? "Connecting..." : "Naya Room Banao 🎨"}
+          </Text>
+        </Pressable>
+      )}
+
+      <Pressable style={styles.linkBtn} onPress={() => setJoinMode((v) => !v)}>
+        <Text style={styles.linkText}>
+          {joinMode ? "← Naya room banao" : "Code se join karo 🔑"}
+        </Text>
+      </Pressable>
+
+      {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+
+      <Text style={styles.footer}>Free forever · Room code dost ko bhejo aur khelo 🎉</Text>
     </View>
   );
 }
@@ -38,28 +100,50 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#208AEF",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 80,
-    paddingBottom: 48,
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    gap: 14,
   },
-  header: { alignItems: "center", gap: 8 },
+  art: { width: 320, height: 130, borderRadius: 20, overflow: "hidden" },
   title: {
     fontSize: 44,
     fontWeight: "900",
     color: "#ffffff",
     letterSpacing: 1,
   },
-  tagline: {
+  tagline: { fontSize: 15, color: "#dbeeff", fontWeight: "600" },
+  nameInput: {
+    backgroundColor: "#ffffff18",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: "#ffffff",
     fontSize: 16,
-    color: "#dbeeff",
-    fontWeight: "600",
+    alignSelf: "stretch",
+    textAlign: "center",
+    marginTop: 8,
   },
-  canvasWrap: {
-    borderRadius: 20,
-    overflow: "hidden",
+  codeInput: { letterSpacing: 8, fontWeight: "800", fontSize: 20 },
+  btn: {
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignSelf: "stretch",
+    alignItems: "center",
+    backgroundColor: "#ffd700",
   },
-  canvas: { width: 320, height: 220 },
-  footer: { alignItems: "center", gap: 4 },
-  footerText: { color: "#ffffff", fontWeight: "700", fontSize: 15 },
-  footerSub: { color: "#9fc9f5", fontSize: 13 },
+  btnText: { fontSize: 17, fontWeight: "900" },
+  btnPrimaryText: { color: "#0b2545" },
+  btnSecondary: { backgroundColor: "#ffffff" },
+  btnSecondaryText: { color: "#0b2545" },
+  disabled: { opacity: 0.4 },
+  linkBtn: { paddingVertical: 8 },
+  linkText: { color: "#dbeeff", fontWeight: "700", fontSize: 14 },
+  error: { color: "#ffb4b4", fontWeight: "700", textAlign: "center" },
+  footer: {
+    color: "#9fc9f5",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: "auto",
+    marginBottom: 24,
+  },
 });

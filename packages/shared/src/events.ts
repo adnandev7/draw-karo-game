@@ -17,10 +17,14 @@ import type {
 
 export type ClientToServerEvents = {
   // Room lifecycle
-  "room:create": (settings: Partial<RoomSettings>, cb: (res: RoomOpResult) => void) => void;
+  "room:create": (
+    settings: Partial<RoomSettings>,
+    profile: { profileId: string; name: string; avatar: AvatarDescriptor },
+    cb: (res: RoomOpResult) => void
+  ) => void;
   "room:join": (
     code: string,
-    profile: { name: string; avatar: AvatarDescriptor },
+    profile: { profileId: string; name: string; avatar: AvatarDescriptor },
     cb: (res: RoomOpResult) => void
   ) => void;
   "room:leave": () => void;
@@ -67,7 +71,8 @@ export type ServerToClientEvents = {
 
   /** Drawer receives `words` (the actual options); everyone else gets the mask. */
   "turn:selecting": (p: { drawerId: string; wordMask: string; words?: string[] }) => void;
-  "turn:drawing": (p: { drawerId: string; wordLength: number }) => void;
+  /** Everyone gets the mask; the drawer's socket also gets the chosen `word`. */
+  "turn:drawing": (p: { drawerId: string; wordLength: number; word?: string }) => void;
   "draw:stroke": (delta: Parameters<ClientToServerEvents["draw:stroke"]>[0]) => void;
   "draw:undo": (strokeId: string | null) => void;
   "draw:clear": () => void;
