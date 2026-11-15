@@ -1,6 +1,7 @@
 /**
  * Room screen — renders lobby or game based on the server phase.
- * All state comes from the store (server snapshots); no local game logic.
+ * Wide screens get skribbl's layout: players sidebar · canvas · chat.
+ * Narrow screens stack vertically. All state comes from the store.
  */
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -11,16 +12,19 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { availablePackIds, WORD_PACKS } from "@drawkaro/words";
 import type { WordPackId } from "@drawkaro/shared";
 import { t } from "../lib/strings";
+import { C, F, flatShadow } from "../lib/theme";
 import { useGame } from "../store/game";
 import { DrawCanvasLazy } from "../components/game/DrawCanvasLazy";
 import { Toolbar } from "../components/game/Toolbar";
 import { ChatPanel } from "../components/game/ChatPanel";
-import { PlayerStrip } from "../components/game/PlayerStrip";
+import { PlayerList } from "../components/game/PlayerStrip";
+import { GameBar } from "../components/game/GameBar";
 import {
   GameEndOverlay,
   RoundEndOverlay,
@@ -28,11 +32,13 @@ import {
   WordChoiceOverlay,
 } from "../components/game/Overlays";
 
+const WIDE = 860;
+
 export default function RoomScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const room = useGame((s) => s.room);
   const profile = useGame((s) => s.profile);
-  const leaveRoom = useGame((s) => s.leaveRoom);
   const errorMsg = useGame((s) => s.errorMsg);
   const myWordOptions = useGame((s) => s.myWordOptions);
   const turnEnd = useGame((s) => s.turnEnd);
@@ -42,6 +48,8 @@ export default function RoomScreen() {
   useEffect(() => {
     if (!room) router.replace("/");
   }, [room, router]);
+
+  const wide = width >= WIDE;
 
   if (!room) return null;
 
@@ -53,13 +61,10 @@ export default function RoomScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Header code={room.code} phase={room.phase} round={room.round} total={room.settings.rounds} />
-      {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
-
       {room.phase === "lobby" ? (
-        <LobbyView isHost={isHost} />
+        <LobbyView isHost={isHost} wide={wide} />
       ) : (
-        <GameView isDrawer={isDrawer} />
+        <GameView isDrawer={isDrawer} wide={wide} />
       )}
 
       {/* overlays */}
@@ -74,41 +79,18 @@ export default function RoomScreen() {
       ) : null}
       {room.phase === "gameEnd" && gameEnd ? <GameEndOverlay podium={gameEnd.podium} /> : null}
 
-      <Pressable style={styles.leave} onPress={leaveRoom}>
-        <Text style={styles.leaveText}>🚪 Leave</Text>
-      </Pressable>
+      {errorMsg ? (
+        <View style={styles.errorToast}>
+          <Text style={styles.errorText}>{errorMsg}</Text>
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
 
-function Header({
-  code,
-  phase,
-  round,
-  total,
-}: {
-  code: string;
-  phase: string;
-  round: number;
-  total: number;
-}) {
-  return (
-    <View style={styles.header}>
-      <Text style={styles.code}>#{code}</Text>
-      <Text style={styles.phase}>
-        {phase === "lobby"
-          ? t.lobby
-          : phase === "selecting"
-            ? t.pickingWord
-            : phase === "drawing"
-              ? t.roundLabel(round, total)
-              : t.waitingNext}
-      </Text>
-    </View>
-  );
-}
+// ─── Lobby ────────────────────────────────────────────────────────────────────
 
-function LobbyView({ isHost }: { isHost: boolean }) {
+function LobbyView({ isHost, wide }: { isHost: boolean; wide: boolean }) {
   const room = useGame((s) => s.room)!;
   const startGame = useGame((s) => s.startGame);
   const updateSettings = useGame((s) => s.updateSettings);
@@ -122,31 +104,32 @@ function LobbyView({ isHost }: { isHost: boolean }) {
     updateSettings({ packs: packs.length ? packs : [id] });
   };
 
-  return (
-    <ScrollView style={styles.lobby} contentContainerStyle={styles.lobbyContent}>
-      <View style={styles.inviteCard}>
+  const main = (
+    <ScrollView
+      style={styles.lobbyScroll}
+      contentContainerStyle={styles.lobbyContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.inviteCard, flatShadow]}>
         <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
-        <Text style={styles.inviteCode}>{room.code}</Text>
+        <Text style={styles.inviteCode}>#{room.code}</Text>
       </View>
-
-      <Text style={styles.sectionTitle}>
-        {t.players} ({room.players.length}/{room.settings.maxPlayers})
-      </Text>
-      <PlayerStrip players={room.players} />
 
       {isHost ? (
         <>
           <Text style={styles.sectionTitle}>{t.settingsHostOnly}</Text>
-          <View style={styles.settingsCard}>
+          <View style={[styles.settingsCard, flatShadow]}>
             <Stepper
               label={t.rounds}
               value={room.settings.rounds}
+              max={10}
               onChange={(v) => updateSettings({ rounds: v })}
             />
             <Stepper
               label={t.drawTime}
               value={room.settings.drawTimeSec}
               step={10}
+              max={180}
               onChange={(v) => updateSettings({ drawTimeSec: v })}
             />
             <Stepper
@@ -157,51 +140,154 @@ function LobbyView({ isHost }: { isHost: boolean }) {
             />
             <Text style={styles.settingLabel}>{t.wordPacks}</Text>
             <View style={styles.packRow}>
-              {availablePackIds().map((id) => (
-                <Pressable
-                  key={id}
-                  style={[
-                    styles.packChip,
-                    room.settings.packs.includes(id) && styles.packChipOn,
-                  ]}
-                  onPress={() => togglePack(id)}
-                >
-                  <Text style={[styles.packText, room.settings.packs.includes(id) && styles.packTextOn]}>
-                    {WORD_PACKS[id]?.emoji} {WORD_PACKS[id]?.label}
-                  </Text>
-                </Pressable>
-              ))}
+              {availablePackIds().map((id) => {
+                const on = room.settings.packs.includes(id);
+                return (
+                  <Pressable
+                    key={id}
+                    style={[styles.packChip, on && styles.packChipOn]}
+                    onPress={() => togglePack(id)}
+                  >
+                    <Text style={[styles.packText, on && styles.packTextOn]}>
+                      {WORD_PACKS[id]?.emoji} {WORD_PACKS[id]?.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
             <Text style={styles.settingHint}>{t.insideJokeHint}</Text>
           </View>
+          <Pressable
+            style={[styles.startBtn, !canStart && styles.disabled]}
+            disabled={!canStart}
+            onPress={startGame}
+          >
+            <Text style={styles.startText}>
+              {!canStart ? t.needPlayers : "Start Game! 🚀"}
+            </Text>
+          </Pressable>
         </>
       ) : (
-        <Text style={styles.hostNote}>
-          {t.hostControls(room.players.find((p) => p.isHost)?.name ?? "?")}
-        </Text>
+        <>
+          <Text style={styles.hostNote}>
+            {t.hostControls(room.players.find((p) => p.isHost)?.name ?? "?")}
+          </Text>
+          <Pressable style={[styles.startBtn, styles.disabled]} disabled>
+            <Text style={styles.startText}>{t.waitingForHost}</Text>
+          </Pressable>
+        </>
       )}
+    </ScrollView>
+  );
 
-      <Pressable
-        style={[styles.startBtn, (!canStart || !isHost) && styles.disabled]}
-        disabled={!canStart || !isHost}
-        onPress={startGame}
-      >
-        <Text style={styles.startText}>
-          {!isHost ? t.waitingForHost : !canStart ? t.needPlayers : t.startGame}
-        </Text>
-      </Pressable>
+  const side = (
+    <View style={styles.lobbySide}>
+      <Text style={styles.sectionTitle}>
+        {t.players} ({room.players.length}/{room.settings.maxPlayers})
+      </Text>
+      <PlayerList players={room.players} drawerId={null} layout="rows" />
+      <View style={styles.lobbySideChat}>
+        <ChatPanel
+          entries={room.chat}
+          isDrawer={false}
+          guessedCurrent={false}
+          onSubmit={sendChat}
+        />
+      </View>
+    </View>
+  );
 
-      <ChatPanel
-        entries={room.chat}
-        isDrawer={false}
-        guessedCurrent={false}
-        onSubmit={sendChat}
-      />
+  if (wide) {
+    return (
+      <View style={styles.wideRow}>
+        <View style={styles.wideMain}>{main}</View>
+        {side}
+        <LeaveButton />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.lobby} contentContainerStyle={styles.lobbyContentNarrow}>
+      <View style={[styles.inviteCard, flatShadow]}>
+        <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
+        <Text style={styles.inviteCode}>#{room.code}</Text>
+      </View>
+      <Text style={styles.sectionTitle}>
+        {t.players} ({room.players.length}/{room.settings.maxPlayers})
+      </Text>
+      <PlayerList players={room.players} drawerId={null} layout="strip" />
+      {isHost ? (
+        <>
+          <Text style={styles.sectionTitle}>{t.settingsHostOnly}</Text>
+          <View style={[styles.settingsCard, flatShadow]}>
+            <Stepper
+              label={t.rounds}
+              value={room.settings.rounds}
+              max={10}
+              onChange={(v) => updateSettings({ rounds: v })}
+            />
+            <Stepper
+              label={t.drawTime}
+              value={room.settings.drawTimeSec}
+              step={10}
+              max={180}
+              onChange={(v) => updateSettings({ drawTimeSec: v })}
+            />
+            <Stepper
+              label={t.hints}
+              value={room.settings.hints}
+              max={3}
+              onChange={(v) => updateSettings({ hints: v })}
+            />
+            <Text style={styles.settingLabel}>{t.wordPacks}</Text>
+            <View style={styles.packRow}>
+              {availablePackIds().map((id) => {
+                const on = room.settings.packs.includes(id);
+                return (
+                  <Pressable
+                    key={id}
+                    style={[styles.packChip, on && styles.packChipOn]}
+                    onPress={() => togglePack(id)}
+                  >
+                    <Text style={[styles.packText, on && styles.packTextOn]}>
+                      {WORD_PACKS[id]?.emoji} {WORD_PACKS[id]?.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.settingHint}>{t.insideJokeHint}</Text>
+          </View>
+          <Pressable
+            style={[styles.startBtn, !canStart && styles.disabled]}
+            disabled={!canStart}
+            onPress={startGame}
+          >
+            <Text style={styles.startText}>
+              {!canStart ? t.needPlayers : "Start Game! 🚀"}
+            </Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Text style={styles.hostNote}>
+            {t.hostControls(room.players.find((p) => p.isHost)?.name ?? "?")}
+          </Text>
+          <Pressable style={[styles.startBtn, styles.disabled]} disabled>
+            <Text style={styles.startText}>{t.waitingForHost}</Text>
+          </Pressable>
+        </>
+      )}
+      <ChatPanel entries={room.chat} isDrawer={false} guessedCurrent={false} onSubmit={sendChat} />
+      <LeaveButton />
     </ScrollView>
   );
 }
 
-function GameView({ isDrawer }: { isDrawer: boolean }) {
+// ─── Game ─────────────────────────────────────────────────────────────────────
+
+function GameView({ isDrawer, wide }: { isDrawer: boolean; wide: boolean }) {
   const room = useGame((s) => s.room)!;
   const profile = useGame((s) => s.profile);
   const myWord = useGame((s) => s.myWord);
@@ -212,71 +298,125 @@ function GameView({ isDrawer }: { isDrawer: boolean }) {
   const sendGuess = useGame((s) => s.sendGuess);
   const sendReaction = useGame((s) => s.sendReaction);
   const [color, setColor] = useState("#111111");
-  const [width, setWidth] = useState(0.012);
+  const [width, setWidth] = useState(0.014);
   const [tool, setTool] = useState<"brush" | "eraser">("brush");
   const me = useMemo(
     () => room.players.find((p) => p.id === profile.profileId),
     [room.players, profile.profileId]
   );
   const seconds = Math.ceil(room.timeLeftMs / 1000);
+  const waiting = room.phase === "turnEnd" || room.phase === "roundEnd";
 
-  return (
-    <View style={styles.game}>
-      <View style={styles.gameTop}>
-        <PlayerStrip players={room.players} />
-        <View style={styles.wordRow}>
-          <Text style={styles.mask}>
-            {isDrawer ? (myWord ?? "?") : room.wordMask}
-          </Text>
-          <Text style={styles.timer}>{seconds > 0 ? `${seconds}s` : ""}</Text>
-        </View>
-        {closeHint ? <Text style={styles.closeHint}>{closeHint}</Text> : null}
-        {!isDrawer && me?.guessedCurrent ? null : (
-          <View style={styles.reactionRow}>
-            {["😂", "🔥", "💀", "👏"].map((e) => (
-              <Pressable key={e} style={styles.reactionBtn} onPress={() => sendReaction(e)}>
-                <Text style={{ fontSize: 18 }}>{e}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-      </View>
+  const gameBar = (
+    <GameBar
+      round={room.round}
+      total={room.settings.rounds}
+      seconds={seconds}
+      isDrawer={isDrawer}
+      myWord={myWord}
+      mask={room.wordMask}
+      waiting={waiting}
+    />
+  );
 
-      <DrawCanvasLazy
-        isDrawer={isDrawer}
-        strokes={room.strokes}
-        color={color}
-        width={width}
-        tool={tool}
-        onBatch={pushStrokeBatch}
-      />
+  const playersBlock = (
+    <PlayerList players={room.players} drawerId={room.drawerId} layout={wide ? "rows" : "strip"} />
+  );
 
-      {isDrawer ? (
-        <View style={styles.toolbarWrap}>
-          <Toolbar
-            color={color}
-            width={width}
-            tool={tool}
-            onChange={(v) => {
-              if (v.color !== undefined) setColor(v.color);
-              if (v.width !== undefined) setWidth(v.width);
-              if (v.tool !== undefined) setTool(v.tool);
-            }}
-            onUndo={undoStroke}
-            onClear={clearCanvas}
-          />
+  const canvasBlock = (
+    <View style={styles.canvasBlock}>
+      {closeHint ? (
+        <View style={styles.closeHint}>
+          <Text style={styles.closeHintText}>{closeHint}</Text>
         </View>
       ) : null}
+      <View style={[styles.canvasCard, flatShadow]}>
+        <DrawCanvasLazy
+          isDrawer={isDrawer}
+          strokes={room.strokes}
+          color={color}
+          width={width}
+          tool={tool}
+          onBatch={pushStrokeBatch}
+        />
+      </View>
+      {isDrawer ? (
+        <Toolbar
+          color={color}
+          width={width}
+          tool={tool}
+          onChange={(v) => {
+            if (v.color !== undefined) setColor(v.color);
+            if (v.width !== undefined) setWidth(v.width);
+            if (v.tool !== undefined) setTool(v.tool);
+          }}
+          onUndo={undoStroke}
+          onClear={clearCanvas}
+        />
+      ) : null}
+    </View>
+  );
 
-      <ChatPanel
-        entries={room.chat}
-        isDrawer={isDrawer}
-        guessedCurrent={me?.guessedCurrent ?? false}
-        onSubmit={isDrawer ? sendGuess : sendGuess}
-      />
+  const reactions = !isDrawer && !me?.guessedCurrent ? (
+    <View style={styles.reactionRow}>
+      {["😂", "🔥", "💀", "👏"].map((e) => (
+        <Pressable key={e} style={styles.reactionBtn} onPress={() => sendReaction(e)}>
+          <Text style={{ fontSize: 18 }}>{e}</Text>
+        </Pressable>
+      ))}
+    </View>
+  ) : null;
+
+  if (wide) {
+    return (
+      <View style={styles.gameWide}>
+        {gameBar}
+        <View style={styles.gameWideRow}>
+          <View style={styles.gameSide}>{playersBlock}</View>
+          <View style={styles.gameCenter}>{canvasBlock}</View>
+          <View style={styles.gameChatSide}>
+            <ChatPanel
+              entries={room.chat}
+              isDrawer={isDrawer}
+              guessedCurrent={me?.guessedCurrent ?? false}
+              onSubmit={sendGuess}
+            />
+          </View>
+        </View>
+        <LeaveButton floating />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.gameNarrow}>
+      {gameBar}
+      {playersBlock}
+      {canvasBlock}
+      {reactions}
+      <View style={styles.narrowChat}>
+        <ChatPanel
+          entries={room.chat}
+          isDrawer={isDrawer}
+          guessedCurrent={me?.guessedCurrent ?? false}
+          onSubmit={sendGuess}
+        />
+      </View>
+      <LeaveButton floating />
     </View>
   );
 }
+
+function LeaveButton({ floating }: { floating?: boolean }) {
+  const leaveRoom = useGame((s) => s.leaveRoom);
+  return (
+    <Pressable style={[styles.leave, floating && styles.leaveFloating]} onPress={leaveRoom}>
+      <Text style={styles.leaveText}>🚪 Leave</Text>
+    </Pressable>
+  );
+}
+
+// ─── Shared bits ──────────────────────────────────────────────────────────────
 
 function Stepper({
   label,
@@ -308,64 +448,85 @@ function Stepper({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0b2545" },
-  error: { color: "#ffb4b4", fontSize: 12, textAlign: "center", paddingVertical: 4 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingTop: 44,
-    paddingBottom: 8,
+  container: {
+    flex: 1,
+    backgroundColor: C.bg,
   },
-  code: { color: "#ffd700", fontWeight: "900", fontSize: 16 },
-  phase: { color: "#9fc9f5", fontWeight: "700", fontSize: 13 },
-  leave: { alignSelf: "center", padding: 8 },
-  leaveText: { color: "#9fc9f5", fontSize: 12, fontWeight: "700" },
 
-  // lobby
+  // wide layout
+  wideRow: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    padding: 8,
+  },
+  wideMain: { flex: 1 },
+  lobbySide: { width: 300, gap: 6 },
+  lobbySideChat: { flex: 1 },
+
+  // narrow layout
   lobby: { flex: 1 },
-  lobbyContent: { paddingHorizontal: 14, paddingBottom: 16, gap: 10 },
+  lobbyScroll: { flex: 1 },
+  lobbyContent: { padding: 12, gap: 10, paddingBottom: 20 },
+  lobbyContentNarrow: { padding: 12, gap: 10, paddingBottom: 20 },
+
+  // lobby pieces
   inviteCard: {
-    backgroundColor: "#123a6b",
-    borderRadius: 16,
+    backgroundColor: C.panel,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.panelBorder,
     alignItems: "center",
     padding: 12,
-    borderWidth: 2,
-    borderColor: "#ffd700",
   },
-  inviteLabel: { color: "#9fc9f5", fontSize: 12, fontWeight: "700" },
-  inviteCode: { color: "#ffd700", fontSize: 32, fontWeight: "900", letterSpacing: 10 },
-  sectionTitle: { color: "#ffffff", fontWeight: "800", fontSize: 14, marginTop: 4 },
+  inviteLabel: { color: C.panelDim, fontSize: 11, fontFamily: F.bold },
+  inviteCode: {
+    color: "#ffffff",
+    fontSize: 34,
+    fontFamily: F.black,
+    letterSpacing: 8,
+    textShadowColor: "rgba(0,0,0,0.4)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
+  },
+  sectionTitle: {
+    color: "#ffffff",
+    fontFamily: F.xbold,
+    fontSize: 13,
+    opacity: 0.9,
+  },
   settingsCard: {
-    backgroundColor: "#123a6b",
-    borderRadius: 14,
+    backgroundColor: C.panel,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.panelBorder,
     padding: 12,
     gap: 10,
   },
-  settingLabel: { color: "#dbeeff", fontWeight: "700", fontSize: 13 },
-  settingHint: { color: "#9fc9f5", fontSize: 11 },
+  settingLabel: { color: C.panelText, fontFamily: F.bold, fontSize: 13 },
+  settingHint: { color: C.panelDim, fontSize: 11, fontFamily: F.regular },
   packRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   packChip: {
-    borderRadius: 20,
+    borderRadius: 3,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "#ffffff18",
+    paddingVertical: 7,
+    backgroundColor: "rgba(0,0,0,0.25)",
     borderWidth: 1,
-    borderColor: "#ffffff30",
+    borderColor: C.panelBorder,
   },
-  packChipOn: { backgroundColor: "#ffd700", borderColor: "#ffd700" },
-  packText: { color: "#dbeeff", fontSize: 12, fontWeight: "700" },
-  packTextOn: { color: "#0b2545" },
-  hostNote: { color: "#9fc9f5", fontSize: 12, textAlign: "center" },
+  packChipOn: { backgroundColor: C.green, borderColor: "#2c8a17" },
+  packText: { color: C.panelText, fontSize: 12, fontFamily: F.bold },
+  packTextOn: { color: "#0b3a10" },
+  hostNote: { color: C.panelDim, fontSize: 12, fontFamily: F.regular, textAlign: "center" },
   startBtn: {
-    backgroundColor: "#ffd700",
-    borderRadius: 16,
-    paddingVertical: 14,
+    backgroundColor: C.green,
+    borderRadius: 4,
+    paddingVertical: 13,
     alignItems: "center",
+    ...flatShadow,
   },
-  startText: { color: "#0b2545", fontWeight: "900", fontSize: 16 },
-  disabled: { opacity: 0.4 },
+  startText: { color: "#ffffff", fontFamily: F.black, fontSize: 16 },
+  disabled: { opacity: 0.45 },
   stepRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -375,37 +536,69 @@ const styles = StyleSheet.create({
   stepBtn: {
     width: 30,
     height: 30,
-    borderRadius: 15,
-    backgroundColor: "#ffd700",
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderWidth: 1,
+    borderColor: C.panelBorder,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepBtnText: { color: "#0b2545", fontWeight: "900", fontSize: 18 },
-  stepValue: { color: "#ffffff", fontWeight: "800", minWidth: 28, textAlign: "center" },
-
-  // game
-  game: { flex: 1, paddingHorizontal: 8, gap: 6 },
-  gameTop: { gap: 4 },
-  wordRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#123a6b",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  stepBtnText: { color: "#ffffff", fontFamily: F.black, fontSize: 18 },
+  stepValue: {
+    color: "#ffffff",
+    fontFamily: F.xbold,
+    minWidth: 28,
+    textAlign: "center",
   },
-  mask: { color: "#ffffff", fontSize: 18, fontWeight: "900", letterSpacing: 2 },
-  timer: { color: "#ffd700", fontWeight: "900", fontSize: 16 },
-  closeHint: { color: "#ffd700", fontWeight: "800", fontSize: 13, textAlign: "center" },
+
+  // game layout
+  gameWide: { flex: 1, padding: 8, gap: 8 },
+  gameWideRow: { flex: 1, flexDirection: "row", gap: 8 },
+  gameSide: { width: 230 },
+  gameCenter: { flex: 1, gap: 6 },
+  gameChatSide: { width: 290 },
+  gameNarrow: { flex: 1, padding: 8, gap: 6 },
+
+  canvasBlock: { flex: 1, gap: 6 },
+  canvasCard: {
+    flex: 1,
+    backgroundColor: C.canvas,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  closeHint: {
+    alignSelf: "center",
+    backgroundColor: "rgba(226, 203, 0, 0.95)",
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  closeHintText: { color: "#111111", fontFamily: F.xbold, fontSize: 12 },
   reactionRow: { flexDirection: "row", justifyContent: "center", gap: 8 },
   reactionBtn: {
-    backgroundColor: "#ffffff18",
-    borderRadius: 18,
-    width: 36,
-    height: 30,
+    backgroundColor: C.panel,
+    borderWidth: 1,
+    borderColor: C.panelBorder,
+    borderRadius: 4,
+    width: 40,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
-  toolbarWrap: { alignItems: "center" },
+  narrowChat: { flex: 1, minHeight: 140 },
+
+  leave: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 12 },
+  leaveFloating: { position: "absolute", bottom: 6, left: 0, right: 0 },
+  leaveText: { color: "#ffffff", fontSize: 12, fontFamily: F.bold, opacity: 0.8 },
+
+  errorToast: {
+    position: "absolute",
+    bottom: 60,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(211, 7, 7, 0.9)",
+    borderRadius: 6,
+    padding: 10,
+  },
+  errorText: { color: "#ffffff", fontFamily: F.bold, fontSize: 12, textAlign: "center" },
 });

@@ -390,9 +390,29 @@ export class Room {
     // avoid repeating words within the same game
     const fresh = this.wordPool().filter((w) => !this.usedWords.has(w.word.toLowerCase()));
     const pool = fresh.length >= count ? fresh : [...fresh, ...this.wordPool()];
+    // skribbl-style pacing: early rounds favor easy words, the last rounds
+    // spice things up with harder vocabulary. Weighted sampling w/o replacement.
+    const totalRounds = Math.max(1, this.settings.rounds);
+    const progress =
+      totalRounds <= 1 ? 0 : Math.min(1, Math.max(0, (this.round - 1) / (totalRounds - 1)));
+    const weightOf = (e: WordEntry): number => {
+      if (e.difficulty === "easy") return 2.0 - 1.0 * progress; // 2 → 1
+      if (e.difficulty === "medium") return 1.5;
+      return 0.6 + 0.9 * progress; // 0.6 → 1.5
+    };
     const picked: WordEntry[] = [];
     while (picked.length < count && pool.length > 0) {
-      const idx = Math.floor(Math.random() * pool.length);
+      const weights = pool.map(weightOf);
+      const total = weights.reduce((a, b) => a + b, 0);
+      let roll = Math.random() * total;
+      let idx = pool.length - 1;
+      for (let i = 0; i < pool.length; i++) {
+        roll -= weights[i];
+        if (roll <= 0) {
+          idx = i;
+          break;
+        }
+      }
       const [entry] = pool.splice(idx, 1);
       this.usedWords.add(entry.word.toLowerCase());
       picked.push(entry);

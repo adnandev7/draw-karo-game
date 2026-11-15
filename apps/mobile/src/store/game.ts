@@ -88,6 +88,7 @@ type GameStore = {
   lastReaction: { emoji: string; playerId: string; ts: number } | null;
 
   setName: (name: string) => void;
+  setAvatar: (patch: Partial<AvatarDescriptor>) => void;
   createRoom: (settings?: Partial<RoomSettings>) => void;
   joinRoom: (code: string) => void;
   leaveRoom: () => void;
@@ -122,6 +123,15 @@ export const useGame = create<GameStore>((set, get) => ({
     const profile = { ...get().profile, name: name.slice(0, 16) };
     set({ profile });
     // shared preferences only — the per-tab profileId stays out of localStorage
+    storageSet("profile", JSON.stringify({ name: profile.name, avatar: profile.avatar }));
+  },
+
+  setAvatar: (patch) => {
+    const profile = {
+      ...get().profile,
+      avatar: { ...get().profile.avatar, ...patch },
+    };
+    set({ profile });
     storageSet("profile", JSON.stringify({ name: profile.name, avatar: profile.avatar }));
   },
 
@@ -208,16 +218,14 @@ export const useGame = create<GameStore>((set, get) => ({
 
 // ─── Socket → store wiring (registered once at import time) ──────────────────
 
-let prevPhase: RoomState["phase"] | null = null;
-
 socket.on("room:state", (state) => {
-  const phaseChanged = prevPhase !== state.phase;
-  prevPhase = state.phase;
   useGame.setState((s) => {
     const next: Partial<GameStore> = { room: state };
-    // transient overlays live only for their phase
-    if (phaseChanged || state.phase !== "turnEnd") next.turnEnd = null;
-    if (phaseChanged || state.phase !== "roundEnd") next.roundEnd = null;
+    // transient overlays live only while their phase is active. The turn:end /
+    // round:end payloads usually arrive BEFORE the matching snapshot, so never
+    // wipe them on phase entry — only clear when the phase has moved on.
+    if (state.phase !== "turnEnd") next.turnEnd = null;
+    if (state.phase !== "roundEnd") next.roundEnd = null;
     if (state.phase !== "gameEnd") next.gameEnd = null;
     if (state.phase !== "selecting") next.myWordOptions = null;
     if (state.phase !== "drawing") next.myWord = null;

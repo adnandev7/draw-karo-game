@@ -11,6 +11,7 @@ export const t = {
   tagline: "Draw. Guess. Laugh. 🎨",
   namePlaceholder: "Your name?",
   roomCodePlaceholder: "Room code (e.g. K7TP)",
+  avatarHint: "Style your player",
   createRoom: "Create Room 🎨",
   joinRoom: "Join Room 🚪",
   joinWithCode: "Join with a code 🔑",
@@ -23,6 +24,13 @@ export const t = {
   pickingWord: "Picking a word...",
   turnInProgress: "In progress",
   waitingNext: "Get ready...",
+
+  // Game bar
+  guessThis: "GUESS THIS",
+  drawThis: "DRAW THIS",
+  roundOf: (round: number, total: number) => `Round ${round} of ${total}`,
+  yourTurnNext: "Your turn next",
+  points: (n: number) => `${n} points`,
 
   // Lobby
   inviteLabel: "Invite code — share it with friends!",

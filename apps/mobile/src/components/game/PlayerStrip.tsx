@@ -1,54 +1,261 @@
-/** Horizontal strip of players: avatar, name, score, host crown / guessed check. */
-import { StyleSheet, Text, View } from "react-native";
+/**
+ * PlayerList — skribbl-style player rows (wide screens) or a compact
+ * horizontal strip (phones). Guessed players glow green, the drawer
+ * gets a wiggling pen, the host wears a crown.
+ */
+import { useEffect, useMemo } from "react";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import type { Player } from "@drawkaro/shared";
 import { useGame } from "../../store/game";
+import { Avatar } from "../Avatar";
+import { t } from "../../lib/strings";
+import { C, F, flatShadow } from "../../lib/theme";
 
-export function PlayerStrip({ players }: { players: Player[] }) {
+export function PlayerList({
+  players,
+  drawerId,
+  layout,
+}: {
+  players: Player[];
+  drawerId: string | null;
+  layout: "rows" | "strip";
+}) {
   const me = useGame((s) => s.profile);
+  const sorted = [...players].sort((a, b) => b.score - a.score);
+  const rankOf = (id: string) => sorted.findIndex((p) => p.id === id) + 1;
+
+  if (layout === "strip") {
+    return (
+      <View style={styles.stripRow}>
+        {players.map((p) => (
+          <StripCard
+            key={p.id}
+            p={p}
+            me={p.id === me.profileId}
+            drawing={p.id === drawerId}
+            rank={rankOf(p.id)}
+          />
+        ))}
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.row}>
-      {players.map((p) => (
-        <View key={p.id} style={[styles.card, !p.connected && styles.disconnected]}>
-          <View style={[styles.avatar, { backgroundColor: p.avatar.outfitColor }]}>
-            <Text style={styles.avatarText}>{p.name.slice(0, 1).toUpperCase()}</Text>
-            {p.isHost ? <Text style={styles.badge}>👑</Text> : null}
-          </View>
-          <Text style={styles.name} numberOfLines={1}>
-            {p.id === me.profileId ? "You" : p.name}
-          </Text>
-          <Text style={styles.score}>{p.score}</Text>
-          {p.guessedCurrent ? <Text style={styles.badge}>✅</Text> : null}
-        </View>
+    <View style={[styles.rowsWrap, flatShadow]}>
+      {players.map((p, i) => (
+        <PlayerRow
+          key={p.id}
+          p={p}
+          me={p.id === me.profileId}
+          drawing={p.id === drawerId}
+          rank={rankOf(p.id)}
+          first={i === 0}
+          last={i === players.length - 1}
+        />
       ))}
     </View>
   );
 }
 
+function useWiggle(active: boolean) {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    if (!active) {
+      val.setValue(0);
+      return;
+    }
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(val, { toValue: 1, duration: 500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(val, { toValue: -1, duration: 500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(val, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [active, val]);
+  return val.interpolate({ inputRange: [-1, 1], outputRange: ["-10deg", "10deg"] });
+}
+
+function PlayerRow({
+  p,
+  me,
+  drawing,
+  rank,
+  first,
+  last,
+}: {
+  p: Player;
+  me: boolean;
+  drawing: boolean;
+  rank: number;
+  first: boolean;
+  last: boolean;
+}) {
+  const wiggle = useWiggle(drawing);
+  const bg = p.guessedCurrent
+    ? rank % 2 === 0
+      ? C.guessedRowAlt
+      : C.guessedRow
+    : rank % 2 === 0
+      ? C.chatRowAlt
+      : "#ffffff";
+
+  return (
+    <View
+      style={[
+        styles.row,
+        { backgroundColor: bg },
+        first && styles.rowFirst,
+        last && styles.rowLast,
+        !p.connected && styles.dim,
+      ]}
+    >
+      <Text style={[styles.rank, me && styles.rankMe]}>{rank}</Text>
+      <View style={styles.center}>
+        <View style={styles.nameRow}>
+          <Text style={[styles.name, me && styles.nameMe]} numberOfLines={1}>
+            {p.name}
+            {me ? " (You)" : ""}
+          </Text>
+          {p.isHost ? <Text style={styles.crown}>👑</Text> : null}
+          {drawing ? (
+            <Animated.Text style={[styles.pen, { transform: [{ rotate: wiggle }] }]}>✏️</Animated.Text>
+          ) : null}
+        </View>
+        <Text style={styles.score}>{t.points(p.score)}</Text>
+      </View>
+      <Avatar avatar={p.avatar} size={38} />
+      {p.guessedCurrent ? <Text style={styles.check}>✔</Text> : null}
+    </View>
+  );
+}
+
+function StripCard({
+  p,
+  me,
+  drawing,
+  rank,
+}: {
+  p: Player;
+  me: boolean;
+  drawing: boolean;
+  rank: number;
+}) {
+  const wiggle = useWiggle(drawing);
+  return (
+    <View
+      style={[
+        styles.card,
+        p.guessedCurrent && styles.cardGuessed,
+        !p.connected && styles.dim,
+      ]}
+    >
+      <Text style={[styles.cardRank, me && styles.rankMe]}>{rank}</Text>
+      <Avatar avatar={p.avatar} size={30} />
+      <View style={styles.cardMeta}>
+        <View style={styles.nameRow}>
+          <Text style={[styles.cardName, me && styles.nameMe]} numberOfLines={1}>
+            {p.name}
+          </Text>
+          {p.isHost ? <Text style={styles.crown}>👑</Text> : null}
+          {drawing ? (
+            <Animated.Text style={[styles.pen, { transform: [{ rotate: wiggle }] }]}>✏️</Animated.Text>
+          ) : null}
+        </View>
+        <Text style={styles.cardScore}>{p.score}</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  // vertical rows (skribbl sidebar)
+  rowsWrap: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.panelBorder,
+    overflow: "hidden",
+  },
   row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+    height: 52,
+  },
+  rowFirst: { borderTopLeftRadius: 5, borderTopRightRadius: 5 },
+  rowLast: { borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  dim: { opacity: 0.45 },
+  rank: {
+    width: 16,
+    color: C.panelDim,
+    fontFamily: F.xbold,
+    fontSize: 13,
+  },
+  rankMe: { color: C.me },
+  center: { flex: 1 },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  name: {
+    color: "#111111",
+    fontFamily: F.xbold,
+    fontSize: 13,
+    flexShrink: 1,
+  },
+  nameMe: { color: C.meGuessed },
+  crown: { fontSize: 11 },
+  pen: { fontSize: 12 },
+  score: {
+    color: "#444444",
+    fontFamily: F.regular,
+    fontSize: 11,
+  },
+  check: {
+    position: "absolute",
+    right: 52,
+    color: "#1c7a12",
+    fontFamily: F.black,
+    fontSize: 14,
+  },
+
+  // horizontal strip (phones)
+  stripRow: {
     flexDirection: "row",
     gap: 6,
     flexWrap: "wrap",
   },
   card: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#ffffff18",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 56,
+    gap: 5,
+    backgroundColor: "#ffffff",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.panelBorder,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    minWidth: 104,
   },
-  disconnected: { opacity: 0.4 },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
+  cardGuessed: { backgroundColor: C.guessedRow },
+  cardRank: {
+    color: C.panelDim,
+    fontFamily: F.xbold,
+    fontSize: 11,
   },
-  avatarText: { color: "#fff", fontWeight: "800", fontSize: 14 },
-  badge: { position: "absolute", right: -4, top: -4, fontSize: 11 },
-  name: { color: "#fff", fontSize: 11, fontWeight: "600", marginTop: 2, maxWidth: 64 },
-  score: { color: "#ffd700", fontSize: 11, fontWeight: "800" },
+  cardMeta: { flexShrink: 1 },
+  cardName: {
+    color: "#111111",
+    fontFamily: F.xbold,
+    fontSize: 11,
+    maxWidth: 72,
+  },
+  cardScore: {
+    color: "#444444",
+    fontFamily: F.regular,
+    fontSize: 10,
+  },
 });

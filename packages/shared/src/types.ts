@@ -25,6 +25,7 @@ export const DEFAULT_AVATAR: AvatarDescriptor = {
 // ─── Word packs ──────────────────────────────────────────────────────────────
 
 export type WordPackId =
+  | "english"
   | "bollywood"
   | "cricket"
   | "indian-food"
@@ -57,7 +58,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   maxPlayers: 8,
   wordChoices: 3,
   hints: 2,
-  packs: ["bollywood", "indian-food", "memes"],
+  packs: ["english", "indian-food"],
   customWords: [],
   onlyCustom: false,
   awardMode: "final",

@@ -1,11 +1,12 @@
 /**
- * Chat + guess panel. During drawing, text input acts as the guess box;
- * otherwise it's room chat.
+ * Chat + guess panel — skribbl-style light chat: alternating rows,
+ * green rows for correct guesses, system lines in dim italic.
  */
 import { useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ChatEntry } from "@drawkaro/shared";
 import { t } from "../../lib/strings";
+import { C, F, flatShadow } from "../../lib/theme";
 
 type Props = {
   entries: ChatEntry[];
@@ -19,14 +20,14 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
   const listRef = useRef<FlatList<ChatEntry>>(null);
 
   const submit = () => {
-    const t = text.trim();
-    if (!t) return;
-    onSubmit(t);
+    const t2 = text.trim();
+    if (!t2) return;
+    onSubmit(t2);
     setText("");
   };
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, flatShadow]}>
       <FlatList
         ref={listRef}
         data={[...entries].reverse()}
@@ -34,18 +35,30 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
         keyExtractor={(e) => e.id}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <Text
-            style={[
-              styles.line,
-              item.kind === "correct" && styles.correct,
-              item.kind === "system" && styles.system,
-              item.playerId === "drawer-hidden" && styles.hidden,
-            ]}
-          >
-            {item.kind === "system" ? `— ${item.text} —` : `${item.playerName}: ${item.text}`}
-          </Text>
-        )}
+        renderItem={({ item, index }) => {
+          const alt = index % 2 === 1;
+          return (
+            <View
+              style={[
+                styles.row,
+                alt && styles.rowAlt,
+                item.kind === "correct" && styles.rowCorrect,
+                item.playerId === "drawer-hidden" && styles.hidden,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.line,
+                  item.kind === "system" && styles.system,
+                  item.kind === "correct" && styles.correctText,
+                ]}
+                numberOfLines={2}
+              >
+                {item.kind === "system" ? `— ${item.text} —` : `${item.playerName}: ${item.text}`}
+              </Text>
+            </View>
+          );
+        }}
       />
       {guessedCurrent ? (
         <View style={styles.guessedBanner}>
@@ -58,7 +71,7 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
             value={text}
             onChangeText={setText}
             placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
-            placeholderTextColor="#8fb4d9"
+            placeholderTextColor={C.panelDim}
             onSubmitEditing={submit}
             returnKeyType="send"
             blurOnSubmit={false}
@@ -73,43 +86,75 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, minHeight: 120 },
+  wrap: {
+    flex: 1,
+    minHeight: 120,
+    backgroundColor: "#ffffff",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.panelBorder,
+    overflow: "hidden",
+  },
   list: { flex: 1 },
-  listContent: { paddingVertical: 4 },
-  line: { color: "#e6f2ff", fontSize: 13, paddingVertical: 1 },
-  correct: { color: "#4ade80", fontWeight: "700" },
-  system: { color: "#9fc9f5", fontStyle: "italic" },
-  hidden: { opacity: 0 },
+  listContent: { paddingVertical: 2 },
+  row: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  rowAlt: { backgroundColor: C.chatRowAlt },
+  rowCorrect: { backgroundColor: C.guessedRow },
+  line: {
+    color: "#111111",
+    fontSize: 13,
+    fontFamily: F.semibold,
+  },
+  system: {
+    color: "#777777",
+    fontStyle: "italic",
+    fontFamily: F.regular,
+  },
+  correctText: {
+    color: "#1c7a12",
+    fontFamily: F.xbold,
+  },
+  hidden: { display: "none" },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingTop: 6,
+    gap: 5,
+    padding: 5,
   },
   input: {
     flex: 1,
-    backgroundColor: "#ffffff18",
-    borderRadius: 20,
-    paddingHorizontal: 14,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: C.inputBorder,
+    borderRadius: 3,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    color: "#ffffff",
+    color: C.inputText,
     fontSize: 14,
+    fontFamily: F.semibold,
   },
   send: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: "#ffd700",
+    borderRadius: 5,
+    backgroundColor: C.blue,
     alignItems: "center",
     justifyContent: "center",
   },
   sendText: { fontSize: 17 },
   guessedBanner: {
-    backgroundColor: "#1a9e4b",
-    borderRadius: 20,
-    paddingVertical: 10,
+    backgroundColor: C.guessed,
+    margin: 5,
+    borderRadius: 5,
+    paddingVertical: 9,
     alignItems: "center",
-    marginTop: 6,
   },
-  guessedText: { color: "#fff", fontWeight: "800" },
+  guessedText: {
+    color: "#ffffff",
+    fontFamily: F.xbold,
+    fontSize: 13,
+  },
 });
