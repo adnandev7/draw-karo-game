@@ -10,7 +10,10 @@ type KV = {
   delete(key: string): void;
 };
 
+type Scope = "local" | "session";
+
 let impl: KV;
+let sessionImpl: KV | null = null; // web only
 
 if (Platform.OS === "web") {
   impl = {
@@ -36,6 +39,29 @@ if (Platform.OS === "web") {
       }
     },
   };
+  sessionImpl = {
+    getString: (key) => {
+      try {
+        return globalThis.sessionStorage?.getItem(key) ?? undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    set: (key, value) => {
+      try {
+        globalThis.sessionStorage?.setItem(key, value);
+      } catch {
+        /* ignore */
+      }
+    },
+    delete: (key) => {
+      try {
+        globalThis.sessionStorage?.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+    },
+  };
 } else {
   // Lazy require keeps the web bundle free of native imports
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -48,10 +74,15 @@ if (Platform.OS === "web") {
   };
 }
 
-export function storageGet(key: string): string | undefined {
-  return impl.getString(key);
+/**
+ * Web: "session" scope reads/writes sessionStorage (per browser tab — each
+ * tab is its own player); "local" persists across tabs. Native: both are MMKV
+ * (one player per device).
+ */
+export function storageGet(key: string, scope: Scope = "local"): string | undefined {
+  return (scope === "session" ? sessionImpl : impl)?.getString(key);
 }
 
-export function storageSet(key: string, value: string): void {
-  impl.set(key, value);
+export function storageSet(key: string, value: string, scope: Scope = "local"): void {
+  (scope === "session" ? sessionImpl : impl)?.set(key, value);
 }

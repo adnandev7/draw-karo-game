@@ -49,22 +49,27 @@ export type StrokeDelta = {
 };
 
 function loadProfile(): Profile {
+  // Name + avatar persist across tabs (localStorage); the player ID is
+  // per-tab (sessionStorage on web) so multiple tabs = multiple players,
+  // while a refresh still keeps the same identity for reconnects.
+  let name = "";
+  let avatar = DEFAULT_AVATAR;
   const raw = storageGet("profile");
   if (raw) {
     try {
-      const parsed = JSON.parse(raw) as Profile;
-      if (parsed?.profileId) return parsed;
+      const parsed = JSON.parse(raw) as { name?: string; avatar?: AvatarDescriptor };
+      if (typeof parsed.name === "string") name = parsed.name;
+      if (parsed.avatar) avatar = parsed.avatar;
     } catch {
       /* fallthrough */
     }
   }
-  const fresh: Profile = {
-    profileId: `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-    name: "",
-    avatar: DEFAULT_AVATAR,
-  };
-  storageSet("profile", JSON.stringify(fresh));
-  return fresh;
+  let profileId = storageGet("profileId", "session");
+  if (!profileId) {
+    profileId = `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    storageSet("profileId", profileId, "session");
+  }
+  return { profileId, name, avatar };
 }
 
 type GameStore = {
@@ -116,7 +121,8 @@ export const useGame = create<GameStore>((set, get) => ({
   setName: (name) => {
     const profile = { ...get().profile, name: name.slice(0, 16) };
     set({ profile });
-    storageSet("profile", JSON.stringify(profile));
+    // shared preferences only — the per-tab profileId stays out of localStorage
+    storageSet("profile", JSON.stringify({ name: profile.name, avatar: profile.avatar }));
   },
 
   createRoom: (settings) => {
