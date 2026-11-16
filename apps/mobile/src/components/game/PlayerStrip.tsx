@@ -10,7 +10,7 @@ import type { Player } from "@drawkaro/shared";
 import { useGame } from "../../store/game";
 import { Avatar } from "../Avatar";
 import { t } from "../../lib/strings";
-import { C, F, flatShadow, R } from "../../lib/theme";
+import { C, F, R } from "../../lib/theme";
 
 export function PlayerList({
   players,
@@ -42,7 +42,7 @@ export function PlayerList({
   }
 
   return (
-    <View style={[styles.rowsWrap, flatShadow]}>
+    <View style={styles.rowsWrap}>
       {players.map((p, i) => (
         <PlayerRow
           key={p.id}

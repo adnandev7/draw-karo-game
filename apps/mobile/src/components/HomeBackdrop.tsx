@@ -53,6 +53,10 @@ const WAVE_URI =
 export function HomeBackdrop() {
   const wave1 = useDrift(26000);
   const wave2 = useDrift(38000, true);
+  // vertical bobbing with different periods + opposite directions — the two
+  // bands swell against each other so the surface reads as rolling water
+  const bob1 = useBob(5200);
+  const bob2 = useBob(6800);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -70,12 +74,29 @@ export function HomeBackdrop() {
       <View style={styles.waveSlot}>
         <Animated.Image
           source={{ uri: WAVE_URI }}
-          style={[styles.wave, { transform: [{ translateX: wave1 }] }]}
+          style={[
+            styles.wave,
+            {
+              transform: [
+                { translateX: wave1 },
+                { translateY: bob1.interpolate({ inputRange: [0, 1], outputRange: [0, -12] }) },
+              ],
+            },
+          ]}
           resizeMode="repeat"
         />
         <Animated.Image
           source={{ uri: WAVE_URI }}
-          style={[styles.wave, styles.waveLow, { transform: [{ translateX: wave2 }] }]}
+          style={[
+            styles.wave,
+            styles.waveLow,
+            {
+              transform: [
+                { translateX: wave2 },
+                { translateY: bob2.interpolate({ inputRange: [0, 1], outputRange: [0, 10] }) },
+              ],
+            },
+          ]}
           resizeMode="repeat"
         />
       </View>
@@ -107,6 +128,22 @@ function useDrift(duration: number, reverse = false) {
     anim.start();
     return () => anim.stop();
   }, [duration, reverse, val]);
+  return val;
+}
+
+/** Smooth sine bobbing — the "wave" part of the wave animation. */
+function useBob(periodMs: number) {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(val, { toValue: 1, duration: periodMs / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(val, { toValue: 0, duration: periodMs / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [val, periodMs]);
   return val;
 }
 
@@ -168,13 +205,13 @@ const styles = StyleSheet.create({
   },
   wave: {
     position: "absolute",
-    bottom: 0,
+    bottom: -16,
     left: -600,
     width: 2400,
     height: 90,
   },
   waveLow: {
-    bottom: -14,
+    bottom: -26,
     height: 76,
     opacity: 0.7,
   },

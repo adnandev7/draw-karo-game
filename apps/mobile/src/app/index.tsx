@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { t } from "../lib/strings";
-import { C, F, flatShadow, R } from "../lib/theme";
+import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
 import { Avatar, BLOB_COLORS, EXPRESSION_IDS, MOUTH_IDS } from "../components/Avatar";
 import { Logo } from "../components/Logo";
@@ -113,26 +113,30 @@ export default function HomeScreen() {
               <FunkyDice />
             </Pressable>
           </View>
-          <TextInput
-            style={styles.nameInput}
-            value={profile.name}
-            onChangeText={setName}
-            placeholder={t.namePlaceholder}
-            placeholderTextColor={C.panelDim}
-            maxLength={16}
-            autoCapitalize="words"
-          />
+          <View style={styles.inputShell}>
+            <TextInput
+              style={styles.nameInput}
+              value={profile.name}
+              onChangeText={setName}
+              placeholder={t.namePlaceholder}
+              placeholderTextColor={C.panelDim}
+              maxLength={16}
+              autoCapitalize="words"
+            />
+          </View>
         </View>
 
         {joinMode ? (
-          <TextInput
-            style={[styles.nameInput, styles.codeInput]}
-            value={code}
-            onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
-            placeholder={t.roomCodePlaceholder}
-            placeholderTextColor={C.panelDim}
-            autoCapitalize="characters"
-          />
+          <View style={styles.inputShell}>
+            <TextInput
+              style={[styles.nameInput, styles.codeInput]}
+              value={code}
+              onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
+              placeholder={t.roomCodePlaceholder}
+              placeholderTextColor={C.panelDim}
+              autoCapitalize="characters"
+            />
+          </View>
         ) : null}
 
         {joinMode ? (
@@ -244,10 +248,6 @@ function FunkyDice() {
           borderWidth: Math.max(2, s * 0.09),
           borderColor: "#1d2b4f",
           transform: [{ rotate: "-12deg" }],
-          shadowColor: "#0a1530",
-          shadowOffset: { width: 2, height: 3 },
-          shadowOpacity: 0.45,
-          shadowRadius: 0,
         }}
       >
         {dots.map(([x, y], i) => (
@@ -345,15 +345,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   randomizePressed: { transform: [{ scale: 0.85 }, { rotate: "12deg" }] },
-  nameInput: {
-    backgroundColor: C.inputBg,
+  // The border lives on this shell (not the TextInput) so it always wraps
+  // the field pixel-perfectly — RN Web renders TextInput borders thin/clipped.
+  inputShell: {
+    alignSelf: "stretch",
+    width: "100%",
+    height: 46,
     borderRadius: R.pill,
-    // 1.5px: RN Web hairline-rounds a plain 1px border to 0.8 device px,
-    // which reads as a broken/undersized border on high-DPI screens
     borderWidth: 1.5,
     borderColor: C.inputBorder,
+    backgroundColor: C.inputBg,
+    overflow: "hidden",
+  },
+  nameInput: {
+    height: "100%",
     paddingHorizontal: 16,
-    paddingVertical: 11,
     color: C.inputText,
     fontSize: 16,
     fontFamily: F.bold,
@@ -363,15 +369,12 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
     fontFamily: F.black,
     fontSize: 20,
-    alignSelf: "stretch",
-    width: "100%",
   },
   btn: {
     borderRadius: R.pill,
     paddingVertical: 14,
     width: "100%",
     alignItems: "center",
-    ...flatShadow,
   },
   btnGreen: { backgroundColor: C.green },
   btnBlue: { backgroundColor: C.blue },

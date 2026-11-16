@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { C, DRAW_COLORS, DRAW_SIZES, F, flatShadow, R, shade } from "../../lib/theme";
+import { C, DRAW_COLORS, DRAW_SIZES, F, R, shade } from "../../lib/theme";
 
 type Tool = "brush" | "eraser";
 
@@ -23,7 +23,7 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
   const [sizesOpen, setSizesOpen] = useState(false);
 
   return (
-    <View style={[styles.wrap, flatShadow]}>
+    <View style={styles.wrap}>
       {/* big current-color block (skribbl's "what am I holding" swatch) */}
       <View style={[styles.current, { backgroundColor: tool === "eraser" ? "#ffffff" : color }]}>
         <Text style={styles.currentIcon}>{tool === "eraser" ? "🧽" : "✏️"}</Text>
@@ -54,7 +54,7 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
       {/* size picker with popup */}
       <View style={styles.sizes}>
         {sizesOpen ? (
-          <View style={[styles.sizePopup, flatShadow]}>
+          <View style={styles.sizePopup}>
             {DRAW_SIZES.map((s) => (
               <Pressable
                 key={s}

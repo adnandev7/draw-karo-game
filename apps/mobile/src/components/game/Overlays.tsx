@@ -558,10 +558,6 @@ const styles = StyleSheet.create({
     borderColor: "#1d2b4f",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0a1530",
-    shadowOpacity: 0.5,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 },
   },
   funkyClockUrgent: {
     borderColor: "#e01313",

@@ -6,7 +6,7 @@
 import { useEffect, useMemo } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { t } from "../../lib/strings";
-import { C, F, flatShadow, R } from "../../lib/theme";
+import { C, F, R } from "../../lib/theme";
 
 type Props = {
   round: number;
@@ -25,7 +25,7 @@ export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting
   const pulse = usePulse(urgent);
 
   return (
-    <View style={[styles.bar, flatShadow]}>
+    <View style={styles.bar}>
       <View style={styles.side}>
         <View style={[styles.clock, urgent && styles.clockUrgent, { transform: [{ scale: pulse }] }]}>
           <Text style={styles.clockText}>{waiting ? "·" : Math.max(0, seconds)}</Text>

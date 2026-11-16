@@ -10,7 +10,7 @@ export const t = {
   // Home
   tagline: "Draw. Guess. Laugh. 🎨",
   namePlaceholder: "Your name?",
-  roomCodePlaceholder: "Room code (e.g. K7TP)",
+  roomCodePlaceholder: "Room code…",
   avatarHint: "Style your player",
   createRoom: "Create Room 🎨",
   joinRoom: "Join Room 🚪",

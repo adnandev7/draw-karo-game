@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { availablePackIds, WORD_PACKS } from "@drawkaro/words";
 import type { WordPackId } from "@drawkaro/shared";
 import { t } from "../lib/strings";
-import { C, F, flatShadow, R } from "../lib/theme";
+import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
 import { DrawCanvasLazy } from "../components/game/DrawCanvasLazy";
 import { Toolbar } from "../components/game/Toolbar";
@@ -183,7 +183,7 @@ function LobbyView({
       contentContainerStyle={styles.lobbyContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={[styles.inviteCard, flatShadow]}>
+      <View style={styles.inviteCard}>
         <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
         <Text style={styles.inviteCode}>#{room.code}</Text>
       </View>
@@ -191,7 +191,7 @@ function LobbyView({
       {isHost ? (
         <>
           <Text style={styles.sectionTitle}>{t.settingsHostOnly}</Text>
-          <View style={[styles.settingsCard, flatShadow]}>
+          <View style={styles.settingsCard}>
             <Stepper
               label={t.rounds}
               value={room.settings.rounds}
@@ -282,7 +282,7 @@ function LobbyView({
 
   return (
     <ScrollView style={styles.lobby} contentContainerStyle={styles.lobbyContentNarrow}>
-      <View style={[styles.inviteCard, flatShadow]}>
+      <View style={styles.inviteCard}>
         <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
         <Text style={styles.inviteCode}>#{room.code}</Text>
       </View>
@@ -293,7 +293,7 @@ function LobbyView({
       {isHost ? (
         <>
           <Text style={styles.sectionTitle}>{t.settingsHostOnly}</Text>
-          <View style={[styles.settingsCard, flatShadow]}>
+          <View style={styles.settingsCard}>
             <Stepper
               label={t.rounds}
               value={room.settings.rounds}
@@ -426,7 +426,7 @@ function GameView({
           <Text style={styles.closeHintText}>{closeHint}</Text>
         </View>
       ) : null}
-      <View style={[styles.canvasCard, flatShadow]}>
+      <View style={styles.canvasCard}>
         <DrawCanvasLazy
           isDrawer={isDrawer}
           strokes={room.strokes}
@@ -638,7 +638,6 @@ const styles = StyleSheet.create({
     borderRadius: R.pill,
     paddingVertical: 13,
     alignItems: "center",
-    ...flatShadow,
   },
   startText: { color: "#ffffff", fontFamily: F.black, fontSize: 16 },
   disabled: { opacity: 0.45 },
@@ -717,7 +716,6 @@ const styles = StyleSheet.create({
     borderColor: C.canvasInk,
     alignItems: "center",
     justifyContent: "center",
-    ...flatShadow,
   },
   rateEmoji: { fontSize: 17 },
   // floating reaction bubble

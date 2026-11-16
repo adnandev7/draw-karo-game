@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ChatEntry } from "@drawkaro/shared";
 import { t } from "../../lib/strings";
-import { C, F, flatShadow, R } from "../../lib/theme";
+import { C, F, R } from "../../lib/theme";
 
 type Props = {
   entries: ChatEntry[];
@@ -27,7 +27,7 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
   };
 
   return (
-    <View style={[styles.wrap, flatShadow]}>
+    <View style={styles.wrap}>
       <FlatList
         ref={listRef}
         data={[...entries].reverse()}
@@ -71,19 +71,21 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
         </View>
       ) : (
         <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={setText}
-            placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
-            placeholderTextColor={C.panelDim}
-            onSubmitEditing={submit}
-            returnKeyType="send"
-            blurOnSubmit={false}
-          />
-          <Pressable onPress={submit} style={styles.send}>
-            <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
-          </Pressable>
+          <View style={styles.inputShell}>
+            <TextInput
+              style={styles.input}
+              value={text}
+              onChangeText={setText}
+              placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
+              placeholderTextColor={C.panelDim}
+              onSubmitEditing={submit}
+              returnKeyType="send"
+              blurOnSubmit={false}
+            />
+            <Pressable onPress={submit} style={styles.send}>
+              <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
+            </Pressable>
+          </View>
         </View>
       )}
     </View>
@@ -134,27 +136,36 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 6,
   },
-  input: {
+  // border on the shell, not the TextInput — always pixel-perfect
+  inputShell: {
     flex: 1,
+    height: 38,
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#ffffff",
     borderWidth: 1.5,
     borderColor: C.inputBorder,
     borderRadius: R.pill,
+    overflow: "hidden",
+  },
+  input: {
+    flex: 1,
+    height: "100%",
     paddingHorizontal: 14,
-    paddingVertical: 8,
     color: C.inputText,
     fontSize: 14,
     fontFamily: F.semibold,
   },
   send: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginRight: 4,
     backgroundColor: C.blue,
     alignItems: "center",
     justifyContent: "center",
   },
-  sendText: { fontSize: 17 },
+  sendText: { fontSize: 15 },
   guessedBanner: {
     backgroundColor: C.guessed,
     margin: 6,
