@@ -62,7 +62,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   maxPlayers: 8,
   wordChoices: 3,
   hints: 2,
-  packs: ["english", "indian-food"],
+  packs: ["english"],
   customWords: [],
   onlyCustom: false,
   awardMode: "final",

@@ -66,6 +66,9 @@ const classicEasy = [
   "head", "hair", "face",
   // people & misc
   "king", "queen", "baby", "ghost", "smile", "crown", "flag", "map",
+  // desi accent — a handful of easy, drawable Hinglish favourites mixed
+  // into Classic so every room keeps the desi fun without any settings
+  "samosa", "lassi", "idli", "naan", "roti", "papad", "jalebi", "kulfi",
 ];
 
 const classicMedium = [
@@ -144,6 +147,10 @@ const classic: WordPack = {
     { word: "yo-yo", difficulty: "medium", accepted: ["yoyo"] },
     { word: "tool box", difficulty: "medium", accepted: ["toolbox"] },
     { word: "vacuum cleaner", difficulty: "medium", accepted: ["vacuum"] },
+    { word: "chai", difficulty: "easy", accepted: ["tea", "cutting chai"] },
+    { word: "dosa", difficulty: "easy", accepted: ["masala dosa"] },
+    { word: "momos", difficulty: "easy", accepted: ["momo"] },
+    { word: "chappal", difficulty: "easy", accepted: ["slipper"] },
   ]),
 };
 

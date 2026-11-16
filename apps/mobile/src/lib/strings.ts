@@ -39,8 +39,6 @@ export const t = {
   rounds: "Rounds",
   drawTime: "Draw time (sec)",
   hints: "Hints",
-  wordPacks: "Word packs",
-  insideJokeHint: "Inside Joke Mode (custom words) is coming in a later update 🤫",
   hostControls: (host: string) => `👑 ${host} controls the settings`,
   waitingForHost: "Waiting for the host to start...",
   needPlayers: "Need at least 2 players",

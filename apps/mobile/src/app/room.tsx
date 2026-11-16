@@ -17,8 +17,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { availablePackIds, WORD_PACKS } from "@drawkaro/words";
-import type { WordPackId } from "@drawkaro/shared";
 import { t } from "../lib/strings";
 import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
@@ -170,13 +168,6 @@ function LobbyView({
   const sendChat = useGame((s) => s.sendChat);
   const canStart = room.players.length >= 2;
 
-  const togglePack = (id: WordPackId) => {
-    const packs = room.settings.packs.includes(id)
-      ? room.settings.packs.filter((p) => p !== id)
-      : [...room.settings.packs, id];
-    updateSettings({ packs: packs.length ? packs : [id] });
-  };
-
   const main = (
     <ScrollView
       style={styles.lobbyScroll}
@@ -211,24 +202,6 @@ function LobbyView({
               max={3}
               onChange={(v) => updateSettings({ hints: v })}
             />
-            <Text style={styles.settingLabel}>{t.wordPacks}</Text>
-            <View style={styles.packRow}>
-              {availablePackIds().map((id) => {
-                const on = room.settings.packs.includes(id);
-                return (
-                  <Pressable
-                    key={id}
-                    style={[styles.packChip, on && styles.packChipOn]}
-                    onPress={() => togglePack(id)}
-                  >
-                    <Text style={[styles.packText, on && styles.packTextOn]}>
-                      {WORD_PACKS[id]?.emoji} {WORD_PACKS[id]?.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={styles.settingHint}>{t.insideJokeHint}</Text>
           </View>
           <Pressable
             style={[styles.startBtn, !canStart && styles.disabled]}
@@ -313,24 +286,6 @@ function LobbyView({
               max={3}
               onChange={(v) => updateSettings({ hints: v })}
             />
-            <Text style={styles.settingLabel}>{t.wordPacks}</Text>
-            <View style={styles.packRow}>
-              {availablePackIds().map((id) => {
-                const on = room.settings.packs.includes(id);
-                return (
-                  <Pressable
-                    key={id}
-                    style={[styles.packChip, on && styles.packChipOn]}
-                    onPress={() => togglePack(id)}
-                  >
-                    <Text style={[styles.packText, on && styles.packTextOn]}>
-                      {WORD_PACKS[id]?.emoji} {WORD_PACKS[id]?.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={styles.settingHint}>{t.insideJokeHint}</Text>
           </View>
           <Pressable
             style={[styles.startBtn, !canStart && styles.disabled]}
@@ -624,19 +579,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   settingLabel: { color: C.panelText, fontFamily: F.bold, fontSize: 13 },
-  settingHint: { color: C.panelDim, fontSize: 11, fontFamily: F.regular },
-  packRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  packChip: {
-    borderRadius: R.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderWidth: 1,
-    borderColor: C.panelBorder,
-  },
-  packChipOn: { backgroundColor: C.green, borderColor: "#2c8a17" },
-  packText: { color: C.panelText, fontSize: 12, fontFamily: F.bold },
-  packTextOn: { color: "#0b3a10" },
   hostNote: { color: C.panelDim, fontSize: 12, fontFamily: F.regular, textAlign: "center" },
   startBtn: {
     backgroundColor: C.green,

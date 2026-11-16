@@ -2,11 +2,14 @@
  * Chat + guess panel — skribbl-style light chat: alternating rows,
  * green rows for correct guesses, system lines in dim italic.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ChatEntry } from "@drawkaro/shared";
 import { t } from "../../lib/strings";
 import { C, F, R } from "../../lib/theme";
+
+/** How long the "you guessed it!" toast stays up before chat returns. */
+const GUESS_TOAST_MS = 4000;
 
 type Props = {
   entries: ChatEntry[];
@@ -18,6 +21,22 @@ type Props = {
 export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props) {
   const [text, setText] = useState("");
   const listRef = useRef<FlatList<ChatEntry>>(null);
+
+  // the guess toast shows once when you guess right, then chat comes back —
+  // guessed players can keep chatting (server routes their messages as chat)
+  const [toast, setToast] = useState(false);
+  useEffect(() => {
+    if (!guessedCurrent) {
+      const off = setTimeout(() => setToast(false), 0);
+      return () => clearTimeout(off);
+    }
+    const on = setTimeout(() => setToast(true), 0);
+    const hide = setTimeout(() => setToast(false), GUESS_TOAST_MS);
+    return () => {
+      clearTimeout(on);
+      clearTimeout(hide);
+    };
+  }, [guessedCurrent]);
 
   const submit = () => {
     const t2 = text.trim();
@@ -65,31 +84,30 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
           );
         }}
       />
-      {guessedCurrent ? (
+      {toast ? (
         <View style={styles.guessedBanner}>
           <Text style={styles.guessedText}>{t.youGuessed}</Text>
         </View>
-      ) : (
-        <View style={styles.inputRow}>
-          <View style={styles.inputGlow}>
-            <View style={styles.inputShell}>
-              <TextInput
-                style={styles.input}
-                value={text}
-                onChangeText={setText}
-                placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
-                placeholderTextColor={C.panelDim}
-                onSubmitEditing={submit}
-                returnKeyType="send"
-                blurOnSubmit={false}
-              />
-              <Pressable onPress={submit} style={styles.send}>
-                <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
-              </Pressable>
-            </View>
+      ) : null}
+      <View style={styles.inputRow}>
+        <View style={styles.inputGlow}>
+          <View style={styles.inputShell}>
+            <TextInput
+              style={styles.input}
+              value={text}
+              onChangeText={setText}
+              placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
+              placeholderTextColor={C.panelDim}
+              onSubmitEditing={submit}
+              returnKeyType="send"
+              blurOnSubmit={false}
+            />
+            <Pressable onPress={submit} style={styles.send}>
+              <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
+            </Pressable>
           </View>
         </View>
-      )}
+      </View>
     </View>
   );
 }
@@ -177,9 +195,10 @@ const styles = StyleSheet.create({
   sendText: { fontSize: 15 },
   guessedBanner: {
     backgroundColor: C.guessed,
-    margin: 6,
+    marginHorizontal: 6,
+    marginTop: 6,
     borderRadius: R.pill,
-    paddingVertical: 9,
+    paddingVertical: 7,
     alignItems: "center",
   },
   guessedText: {

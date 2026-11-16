@@ -4,8 +4,8 @@
  * and tool buttons with letter captions (B / U / C) under the icons —
  * the layout the skribbl screenshot made famous.
  */
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { C, DRAW_COLORS, DRAW_SIZES, F, R, shade } from "../../lib/theme";
 
 type Tool = "brush" | "eraser";
@@ -21,6 +21,36 @@ type Props = {
 
 export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props) {
   const [sizesOpen, setSizesOpen] = useState(false);
+
+  // skribbl's keyboard shortcuts: B brush · E eraser · U undo · C clear.
+  // Web-only (phones have no physical keyboard); ignored while typing in chat.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      switch (e.key.toLowerCase()) {
+        case "b":
+          onChange({ tool: "brush" });
+          break;
+        case "e":
+          onChange({ tool: "eraser" });
+          break;
+        case "u":
+          onUndo();
+          break;
+        case "c":
+          onClear();
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onChange, onUndo, onClear]);
 
   return (
     <View style={styles.wrap}>
@@ -88,7 +118,7 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
         </Pressable>
       </View>
 
-      {/* tools with letter captions — B pencil · eraser · U undo · C clear */}
+      {/* tools with letter captions — B pencil · E eraser · U undo · C clear */}
       <View style={styles.tools}>
         <ToolButton
           icon="✏️"
@@ -98,7 +128,7 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
         />
         <ToolButton
           icon="🧽"
-          caption=""
+          caption="E"
           selected={tool === "eraser"}
           onPress={() => onChange({ tool: "eraser" })}
         />
