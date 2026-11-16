@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ChatEntry } from "@drawkaro/shared";
 import { t } from "../../lib/strings";
-import { C, F, flatShadow } from "../../lib/theme";
+import { C, F, flatShadow, R } from "../../lib/theme";
 
 type Props = {
   entries: ChatEntry[];
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 120,
     backgroundColor: "#ffffff",
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
     overflow: "hidden",
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingVertical: 2 },
   row: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
   },
   rowAlt: { backgroundColor: C.chatRowAlt },
@@ -121,16 +121,16 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    padding: 5,
+    gap: 6,
+    padding: 6,
   },
   input: {
     flex: 1,
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: C.inputBorder,
-    borderRadius: 3,
-    paddingHorizontal: 10,
+    borderRadius: R.pill,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     color: C.inputText,
     fontSize: 14,
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   send: {
     width: 38,
     height: 38,
-    borderRadius: 5,
+    borderRadius: 19,
     backgroundColor: C.blue,
     alignItems: "center",
     justifyContent: "center",
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
   sendText: { fontSize: 17 },
   guessedBanner: {
     backgroundColor: C.guessed,
-    margin: 5,
-    borderRadius: 5,
+    margin: 6,
+    borderRadius: R.pill,
     paddingVertical: 9,
     alignItems: "center",
   },

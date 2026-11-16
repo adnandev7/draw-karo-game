@@ -1,10 +1,12 @@
 /**
  * GameBar — skribbl-style status bar: clock, round counter and the
- * monospace hint mask (or the drawer's secret word) centered.
+ * monospace hint mask truly centered (absolute center, not flexed),
+ * with a pulsing clock when time is running out.
  */
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { t } from "../../lib/strings";
-import { C, F, flatShadow } from "../../lib/theme";
+import { C, F, flatShadow, R } from "../../lib/theme";
 
 type Props = {
   round: number;
@@ -20,16 +22,21 @@ type Props = {
 
 export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting }: Props) {
   const urgent = seconds <= 10 && !waiting;
+  const pulse = usePulse(urgent);
 
   return (
     <View style={[styles.bar, flatShadow]}>
-      <View style={[styles.clock, urgent && styles.clockUrgent]}>
-        <Text style={styles.clockText}>{waiting ? "·" : Math.max(0, seconds)}</Text>
+      <View style={styles.side}>
+        <View style={[styles.clock, urgent && styles.clockUrgent, { transform: [{ scale: pulse }] }]}>
+          <Text style={styles.clockText}>{waiting ? "·" : Math.max(0, seconds)}</Text>
+        </View>
+        <Text style={styles.round} numberOfLines={1}>
+          {t.roundOf(round, total)}
+        </Text>
       </View>
-      <Text style={styles.round} numberOfLines={1}>
-        {t.roundOf(round, total)}
-      </Text>
-      <View style={styles.wordWrap}>
+
+      {/* absolutely centered hint so the clock/round can never push it off */}
+      <View style={styles.center}>
         {waiting ? (
           <Text style={styles.hintLabel}>{isDrawer ? t.yourTurnNext : t.waitingNext}</Text>
         ) : isDrawer && myWord ? (
@@ -44,9 +51,30 @@ export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting
           </>
         )}
       </View>
-      <View style={styles.roundSpacer} />
+
+      {/* spacer mirrors the left side to keep the center honest */}
+      <View style={[styles.side, styles.sideRight]} />
     </View>
   );
+}
+
+function usePulse(active: boolean) {
+  const val = useMemo(() => new Animated.Value(1), []);
+  useEffect(() => {
+    if (!active) {
+      val.setValue(1);
+      return;
+    }
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(val, { toValue: 1.18, duration: 380, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(val, { toValue: 1, duration: 380, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [active, val]);
+  return val;
 }
 
 function Mask({ text }: { text: string }) {
@@ -72,17 +100,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: C.panel,
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
-    height: 48,
-    paddingHorizontal: 6,
-    gap: 8,
+    height: 52,
+    paddingHorizontal: 10,
   },
+  side: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    zIndex: 2,
+  },
+  sideRight: { flex: 1 },
   clock: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
@@ -98,13 +132,18 @@ const styles = StyleSheet.create({
     fontFamily: F.bold,
     fontSize: 12,
     opacity: 0.95,
+    maxWidth: 110,
   },
-  roundSpacer: { width: 40 },
-  wordWrap: {
-    flex: 1,
+  center: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    gap: 1,
+    gap: 2,
+    zIndex: 1,
   },
   hintLabel: {
     color: "rgba(255,255,255,0.75)",
@@ -123,6 +162,7 @@ const styles = StyleSheet.create({
     gap: 3,
     flexWrap: "wrap",
     justifyContent: "center",
+    paddingHorizontal: 120,
   },
   maskChar: {
     fontFamily: F.mono,

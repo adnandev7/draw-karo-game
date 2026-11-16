@@ -1,10 +1,12 @@
 /**
- * Toolbar — skribbl-style drawing controls (drawer only):
- * two-row color strip, brush size popup, pen / eraser / undo / clear.
+ * Toolbar — skribbl's bottom drawer toolbar (drawer only):
+ * big current-color block, 2×12 color grid, size picker with popup,
+ * and tool buttons with letter captions (B / U / C) under the icons —
+ * the layout the skribbl screenshot made famous.
  */
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { C, DRAW_COLORS, DRAW_SIZES, flatShadow } from "../../lib/theme";
+import { C, DRAW_COLORS, DRAW_SIZES, F, flatShadow, R, shade } from "../../lib/theme";
 
 type Tool = "brush" | "eraser";
 
@@ -22,29 +24,37 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
 
   return (
     <View style={[styles.wrap, flatShadow]}>
-      {/* color strip: 2 rows of 12 */}
+      {/* big current-color block (skribbl's "what am I holding" swatch) */}
+      <View style={[styles.current, { backgroundColor: tool === "eraser" ? "#ffffff" : color }]}>
+        <Text style={styles.currentIcon}>{tool === "eraser" ? "🧽" : "✏️"}</Text>
+      </View>
+
+      {/* color grid: 2 rows of 12 */}
       <View style={styles.colors}>
         {[0, 1].map((row) => (
           <View key={row} style={styles.colorRow}>
-            {DRAW_COLORS.slice(row * 12, row * 12 + 12).map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => onChange({ color: c, tool: "brush" })}
-                style={[
-                  styles.color,
-                  { backgroundColor: c },
-                  color === c && tool === "brush" && styles.colorSelected,
-                ]}
-              />
-            ))}
+            {DRAW_COLORS.slice(row * 12, row * 12 + 12).map((c) => {
+              const selected = color === c && tool === "brush";
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => onChange({ color: c, tool: "brush" })}
+                  style={[
+                    styles.color,
+                    { backgroundColor: c },
+                    selected && styles.colorSelected,
+                  ]}
+                />
+              );
+            })}
           </View>
         ))}
       </View>
 
-      {/* size picker */}
+      {/* size picker with popup */}
       <View style={styles.sizes}>
         {sizesOpen ? (
-          <View style={styles.sizePopup}>
+          <View style={[styles.sizePopup, flatShadow]}>
             {DRAW_SIZES.map((s) => (
               <Pressable
                 key={s}
@@ -78,37 +88,42 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
         </Pressable>
       </View>
 
-      {/* tools */}
+      {/* tools with letter captions — B pencil · eraser · U undo · C clear */}
       <View style={styles.tools}>
         <ToolButton
-          label="✏️"
+          icon="✏️"
+          caption="B"
           selected={tool === "brush"}
           onPress={() => onChange({ tool: "brush" })}
         />
         <ToolButton
-          label="🧽"
+          icon="🧽"
+          caption=""
           selected={tool === "eraser"}
           onPress={() => onChange({ tool: "eraser" })}
         />
-        <ToolButton label="↩️" onPress={onUndo} />
-        <ToolButton label="🗑️" onPress={onClear} />
+        <ToolButton icon="↩️" caption="U" onPress={onUndo} />
+        <ToolButton icon="🗑️" caption="C" onPress={onClear} />
       </View>
     </View>
   );
 }
 
 function ToolButton({
-  label,
+  icon,
+  caption,
   selected,
   onPress,
 }: {
-  label: string;
+  icon: string;
+  caption: string;
   selected?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable style={[styles.tool, selected && styles.toolSelected]} onPress={onPress}>
-      <Text style={styles.toolText}>{label}</Text>
+      <Text style={styles.toolIcon}>{icon}</Text>
+      <Text style={styles.toolCaption}>{caption}</Text>
     </Pressable>
   );
 }
@@ -117,62 +132,78 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     backgroundColor: "#ffffff",
-    borderRadius: 6,
-    padding: 5,
-    gap: 8,
+    borderRadius: R.m,
+    padding: 6,
+    gap: 6,
     alignSelf: "stretch",
   },
-  colors: { gap: 1 },
+  current: {
+    width: 40,
+    height: 40,
+    borderRadius: R.s,
+    borderWidth: 2,
+    borderColor: "#2b2b2b",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  currentIcon: { fontSize: 18 },
+  colors: { gap: 2 },
   colorRow: { flexDirection: "row", gap: 2 },
   color: {
-    width: 22,
-    height: 14,
-    borderRadius: 3,
+    width: 20,
+    height: 16,
+    borderRadius: 4,
   },
   colorSelected: {
     borderWidth: 2,
-    borderColor: C.toolActive,
+    borderColor: "#2b2b2b",
   },
   sizes: { position: "relative" },
   sizeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 5,
+    width: 36,
+    height: 40,
+    borderRadius: R.s,
     backgroundColor: "#ececec",
     alignItems: "center",
     justifyContent: "center",
   },
   sizePopup: {
     position: "absolute",
-    bottom: 40,
+    bottom: 44,
     left: 0,
     backgroundColor: "#ffffff",
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
     padding: 4,
     gap: 2,
     zIndex: 30,
-    ...flatShadow,
   },
   sizeCell: {
     width: 36,
-    height: 26,
-    borderRadius: 5,
+    height: 28,
+    borderRadius: R.s,
     alignItems: "center",
     justifyContent: "center",
   },
   cellSelected: { backgroundColor: C.toolActive },
   tools: { flexDirection: "row", gap: 4, marginLeft: "auto" },
   tool: {
-    width: 36,
-    height: 34,
-    borderRadius: 5,
+    width: 38,
+    height: 40,
+    borderRadius: R.s,
     backgroundColor: "#ececec",
     alignItems: "center",
     justifyContent: "center",
   },
-  toolSelected: { backgroundColor: C.toolActive },
-  toolText: { fontSize: 16 },
+  toolSelected: { backgroundColor: shade(C.toolActive, 0.25) },
+  toolIcon: { fontSize: 15, lineHeight: 18 },
+  toolCaption: {
+    fontSize: 9,
+    fontFamily: F.black,
+    color: "#444444",
+    lineHeight: 11,
+  },
 });

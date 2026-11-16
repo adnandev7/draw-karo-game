@@ -1,7 +1,8 @@
 /**
  * PlayerList — skribbl-style player rows (wide screens) or a compact
- * horizontal strip (phones). Guessed players glow green, the drawer
- * gets a wiggling pen, the host wears a crown.
+ * horizontal strip (phones). Guessed players glow green with a ✔ before
+ * the avatar, rows read `#N · name · points` centered like skribbl,
+ * the drawer gets a wiggling pen, the host wears a crown.
  */
 import { useEffect, useMemo } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
@@ -9,7 +10,7 @@ import type { Player } from "@drawkaro/shared";
 import { useGame } from "../../store/game";
 import { Avatar } from "../Avatar";
 import { t } from "../../lib/strings";
-import { C, F, flatShadow } from "../../lib/theme";
+import { C, F, flatShadow, R } from "../../lib/theme";
 
 export function PlayerList({
   players,
@@ -111,7 +112,11 @@ function PlayerRow({
         !p.connected && styles.dim,
       ]}
     >
-      <Text style={[styles.rank, me && styles.rankMe]}>{rank}</Text>
+      <Text style={[styles.rank, me && styles.rankMe]} numberOfLines={1}>
+        #{rank}
+      </Text>
+
+      {/* centered name + points, like skribbl's green rows */}
       <View style={styles.center}>
         <View style={styles.nameRow}>
           <Text style={[styles.name, me && styles.nameMe]} numberOfLines={1}>
@@ -125,8 +130,10 @@ function PlayerRow({
         </View>
         <Text style={styles.score}>{t.points(p.score)}</Text>
       </View>
-      <Avatar avatar={p.avatar} size={38} />
+
+      {/* ✔ inline before the avatar — no absolute overlap */}
       {p.guessedCurrent ? <Text style={styles.check}>✔</Text> : null}
+      <Avatar avatar={p.avatar} size={32} />
     </View>
   );
 }
@@ -151,8 +158,8 @@ function StripCard({
         !p.connected && styles.dim,
       ]}
     >
-      <Text style={[styles.cardRank, me && styles.rankMe]}>{rank}</Text>
-      <Avatar avatar={p.avatar} size={30} />
+      <Text style={[styles.cardRank, me && styles.rankMe]}>#{rank}</Text>
+      <Avatar avatar={p.avatar} size={26} />
       <View style={styles.cardMeta}>
         <View style={styles.nameRow}>
           <Text style={[styles.cardName, me && styles.nameMe]} numberOfLines={1}>
@@ -172,7 +179,7 @@ function StripCard({
 const styles = StyleSheet.create({
   // vertical rows (skribbl sidebar)
   rowsWrap: {
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
     overflow: "hidden",
@@ -181,20 +188,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     height: 52,
   },
-  rowFirst: { borderTopLeftRadius: 5, borderTopRightRadius: 5 },
-  rowLast: { borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  rowFirst: { borderTopLeftRadius: R.m - 1, borderTopRightRadius: R.m - 1 },
+  rowLast: { borderBottomLeftRadius: R.m - 1, borderBottomRightRadius: R.m - 1 },
   dim: { opacity: 0.45 },
   rank: {
-    width: 16,
-    color: C.panelDim,
+    width: 22,
+    color: "#6b6b6b",
     fontFamily: F.xbold,
     fontSize: 13,
   },
-  rankMe: { color: C.me },
-  center: { flex: 1 },
+  rankMe: { color: C.meGuessed },
+  center: {
+    flex: 1,
+    alignItems: "center",
+  },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -210,16 +220,14 @@ const styles = StyleSheet.create({
   crown: { fontSize: 11 },
   pen: { fontSize: 12 },
   score: {
-    color: "#444444",
-    fontFamily: F.regular,
+    color: "#555555",
+    fontFamily: F.semibold,
     fontSize: 11,
   },
   check: {
-    position: "absolute",
-    right: 52,
     color: "#1c7a12",
     fontFamily: F.black,
-    fontSize: 14,
+    fontSize: 16,
   },
 
   // horizontal strip (phones)
@@ -233,16 +241,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     backgroundColor: "#ffffff",
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     minWidth: 104,
   },
   cardGuessed: { backgroundColor: C.guessedRow },
   cardRank: {
-    color: C.panelDim,
+    color: "#6b6b6b",
     fontFamily: F.xbold,
     fontSize: 11,
   },
@@ -254,8 +262,8 @@ const styles = StyleSheet.create({
     maxWidth: 72,
   },
   cardScore: {
-    color: "#444444",
-    fontFamily: F.regular,
+    color: "#555555",
+    fontFamily: F.semibold,
     fontSize: 10,
   },
 });

@@ -79,9 +79,11 @@ export const F = {
 // ─── Shape ────────────────────────────────────────────────────────────────────
 
 export const R = {
-  s: 3,
-  m: 8,
-  l: 14,
+  s: 8,
+  m: 12,
+  l: 18,
+  /** Full pill. */
+  pill: 999,
 } as const;
 
 /** Flat skribbl-style drop shadow: hard 3px offset, 25% black. */
@@ -114,3 +116,20 @@ export const DRAW_COLORS: string[] = [
 
 /** Relative brush widths (fraction of canvas width), small → XL. */
 export const DRAW_SIZES: number[] = [0.004, 0.008, 0.014, 0.024, 0.04];
+
+/** Logo letter colors — funky rainbow, skribbl-style. */
+export const LOGO_COLORS: string[] = [
+  "#ff5252", "#ff9f43", "#ffd93d", "#6ee76e", "#4cc9f0", "#a78bfa", "#ff8fab", "#ffa844",
+];
+
+/** Darken a #rrggbb color by `amount` (0–1). */
+export function shade(hex: string, amount: number): string {
+  const n = hex.replace("#", "");
+  const full = n.length === 3 ? n.split("").map((c) => c + c).join("") : n;
+  const num = parseInt(full, 16);
+  const f = (v: number) => Math.max(0, Math.min(255, Math.round(v * (1 - amount))));
+  const r = f((num >> 16) & 255);
+  const g = f((num >> 8) & 255);
+  const b = f(num & 255);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}

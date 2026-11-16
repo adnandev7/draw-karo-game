@@ -18,13 +18,14 @@ import { useRouter } from "expo-router";
 import { availablePackIds, WORD_PACKS } from "@drawkaro/words";
 import type { WordPackId } from "@drawkaro/shared";
 import { t } from "../lib/strings";
-import { C, F, flatShadow } from "../lib/theme";
+import { C, F, flatShadow, R } from "../lib/theme";
 import { useGame } from "../store/game";
 import { DrawCanvasLazy } from "../components/game/DrawCanvasLazy";
 import { Toolbar } from "../components/game/Toolbar";
 import { ChatPanel } from "../components/game/ChatPanel";
 import { PlayerList } from "../components/game/PlayerStrip";
 import { GameBar } from "../components/game/GameBar";
+import { GameBackdrop } from "../components/HomeBackdrop";
 import {
   GameEndOverlay,
   RoundEndOverlay,
@@ -50,6 +51,9 @@ export default function RoomScreen() {
   }, [room, router]);
 
   const wide = width >= WIDE;
+  // clamp column widths to the viewport so nothing can overflow
+  const sideW = Math.min(280, Math.max(190, Math.round(width * 0.21)));
+  const chatW = Math.min(340, Math.max(230, Math.round(width * 0.25)));
 
   if (!room) return null;
 
@@ -61,10 +65,11 @@ export default function RoomScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <GameBackdrop />
       {room.phase === "lobby" ? (
-        <LobbyView isHost={isHost} wide={wide} />
+        <LobbyView isHost={isHost} wide={wide} sideW={sideW} chatW={chatW} />
       ) : (
-        <GameView isDrawer={isDrawer} wide={wide} />
+        <GameView isDrawer={isDrawer} wide={wide} sideW={sideW} chatW={chatW} />
       )}
 
       {/* overlays */}
@@ -90,7 +95,17 @@ export default function RoomScreen() {
 
 // ─── Lobby ────────────────────────────────────────────────────────────────────
 
-function LobbyView({ isHost, wide }: { isHost: boolean; wide: boolean }) {
+function LobbyView({
+  isHost,
+  wide,
+  sideW,
+  chatW,
+}: {
+  isHost: boolean;
+  wide: boolean;
+  sideW: number;
+  chatW: number;
+}) {
   const room = useGame((s) => s.room)!;
   const startGame = useGame((s) => s.startGame);
   const updateSettings = useGame((s) => s.updateSettings);
@@ -181,7 +196,7 @@ function LobbyView({ isHost, wide }: { isHost: boolean; wide: boolean }) {
   );
 
   const side = (
-    <View style={styles.lobbySide}>
+    <View style={[styles.lobbySide, { width: Math.min(440, sideW + chatW) }]}>
       <Text style={styles.sectionTitle}>
         {t.players} ({room.players.length}/{room.settings.maxPlayers})
       </Text>
@@ -200,7 +215,7 @@ function LobbyView({ isHost, wide }: { isHost: boolean; wide: boolean }) {
   if (wide) {
     return (
       <View style={styles.wideRow}>
-        <View style={styles.wideMain}>{main}</View>
+        <View style={[styles.wideMain, { maxWidth: 620 }]}>{main}</View>
         {side}
         <LeaveButton />
       </View>
@@ -287,7 +302,17 @@ function LobbyView({ isHost, wide }: { isHost: boolean; wide: boolean }) {
 
 // ─── Game ─────────────────────────────────────────────────────────────────────
 
-function GameView({ isDrawer, wide }: { isDrawer: boolean; wide: boolean }) {
+function GameView({
+  isDrawer,
+  wide,
+  sideW,
+  chatW,
+}: {
+  isDrawer: boolean;
+  wide: boolean;
+  sideW: number;
+  chatW: number;
+}) {
   const room = useGame((s) => s.room)!;
   const profile = useGame((s) => s.profile);
   const myWord = useGame((s) => s.myWord);
@@ -372,9 +397,9 @@ function GameView({ isDrawer, wide }: { isDrawer: boolean; wide: boolean }) {
       <View style={styles.gameWide}>
         {gameBar}
         <View style={styles.gameWideRow}>
-          <View style={styles.gameSide}>{playersBlock}</View>
+          <View style={[styles.gameSide, { width: sideW }]}>{playersBlock}</View>
           <View style={styles.gameCenter}>{canvasBlock}</View>
-          <View style={styles.gameChatSide}>
+          <View style={[styles.gameChatSide, { width: chatW }]}>
             <ChatPanel
               entries={room.chat}
               isDrawer={isDrawer}
@@ -459,9 +484,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     padding: 8,
+    justifyContent: "center",
   },
   wideMain: { flex: 1 },
-  lobbySide: { width: 300, gap: 6 },
+  lobbySide: { flexShrink: 0, gap: 6 },
   lobbySideChat: { flex: 1 },
 
   // narrow layout
@@ -473,7 +499,7 @@ const styles = StyleSheet.create({
   // lobby pieces
   inviteCard: {
     backgroundColor: C.panel,
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
     alignItems: "center",
@@ -497,7 +523,7 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     backgroundColor: C.panel,
-    borderRadius: 6,
+    borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
     padding: 12,
@@ -507,8 +533,8 @@ const styles = StyleSheet.create({
   settingHint: { color: C.panelDim, fontSize: 11, fontFamily: F.regular },
   packRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   packChip: {
-    borderRadius: 3,
-    paddingHorizontal: 10,
+    borderRadius: R.pill,
+    paddingHorizontal: 12,
     paddingVertical: 7,
     backgroundColor: "rgba(0,0,0,0.25)",
     borderWidth: 1,
@@ -520,7 +546,7 @@ const styles = StyleSheet.create({
   hostNote: { color: C.panelDim, fontSize: 12, fontFamily: F.regular, textAlign: "center" },
   startBtn: {
     backgroundColor: C.green,
-    borderRadius: 4,
+    borderRadius: R.pill,
     paddingVertical: 13,
     alignItems: "center",
     ...flatShadow,
@@ -534,9 +560,9 @@ const styles = StyleSheet.create({
   },
   stepControls: { flexDirection: "row", alignItems: "center", gap: 10 },
   stepBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 3,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "rgba(0,0,0,0.25)",
     borderWidth: 1,
     borderColor: C.panelBorder,
@@ -554,23 +580,23 @@ const styles = StyleSheet.create({
   // game layout
   gameWide: { flex: 1, padding: 8, gap: 8 },
   gameWideRow: { flex: 1, flexDirection: "row", gap: 8 },
-  gameSide: { width: 230 },
-  gameCenter: { flex: 1, gap: 6 },
-  gameChatSide: { width: 290 },
+  gameSide: { flexShrink: 0 },
+  gameCenter: { flex: 1, gap: 6, minWidth: 260 },
+  gameChatSide: { flexShrink: 0 },
   gameNarrow: { flex: 1, padding: 8, gap: 6 },
 
   canvasBlock: { flex: 1, gap: 6 },
   canvasCard: {
     flex: 1,
     backgroundColor: C.canvas,
-    borderRadius: 6,
+    borderRadius: R.m,
     overflow: "hidden",
   },
   closeHint: {
     alignSelf: "center",
     backgroundColor: "rgba(226, 203, 0, 0.95)",
-    borderRadius: 4,
-    paddingHorizontal: 12,
+    borderRadius: R.pill,
+    paddingHorizontal: 14,
     paddingVertical: 4,
   },
   closeHintText: { color: "#111111", fontFamily: F.xbold, fontSize: 12 },
@@ -579,7 +605,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.panel,
     borderWidth: 1,
     borderColor: C.panelBorder,
-    borderRadius: 4,
+    borderRadius: R.pill,
     width: 40,
     height: 32,
     alignItems: "center",
@@ -597,7 +623,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     backgroundColor: "rgba(211, 7, 7, 0.9)",
-    borderRadius: 6,
+    borderRadius: R.m,
     padding: 10,
   },
   errorText: { color: "#ffffff", fontFamily: F.bold, fontSize: 12, textAlign: "center" },

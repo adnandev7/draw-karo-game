@@ -115,40 +115,49 @@ function DrawCanvasInner({ isDrawer, strokes, color, width, tool, onBatch }: Pro
     [strokes, size]
   );
 
-  const onLayout = useCallback((w: number) => {
-    const next = Math.floor(w);
+  const onLayout = useCallback((e: { width: number; height: number }) => {
+    const next = Math.floor(Math.min(e.width, e.height));
     if (next > 0) setSize(next);
   }, []);
 
   return (
     <View
-      onLayout={(e) => onLayout(e.nativeEvent.layout.width)}
+      onLayout={(e) => onLayout(e.nativeEvent.layout)}
       style={{
-        width: size,
-        height: size,
-        borderRadius: 16,
-        overflow: "hidden",
-        borderWidth: 2,
-        borderColor: "#d8e6f5",
-        backgroundColor: CANVAS_BG,
+        flex: 1,
+        alignSelf: "stretch",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <GestureDetector gesture={gesture}>
-        <Canvas style={{ width: size, height: size }}>
-          <Fill color={CANVAS_BG} />
-          {paths.map((p, i) => (
-            <Path
-              key={i}
-              path={p.path}
-              style="stroke"
-              strokeWidth={Math.max(1, p.width * size)}
-              color={p.color}
-              strokeCap="round"
-              strokeJoin="round"
-            />
-          ))}
-        </Canvas>
-      </GestureDetector>
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 16,
+          overflow: "hidden",
+          borderWidth: 2,
+          borderColor: "#d8e6f5",
+          backgroundColor: CANVAS_BG,
+        }}
+      >
+        <GestureDetector gesture={gesture}>
+          <Canvas style={{ width: size, height: size }}>
+            <Fill color={CANVAS_BG} />
+            {paths.map((p, i) => (
+              <Path
+                key={i}
+                path={p.path}
+                style="stroke"
+                strokeWidth={Math.max(1, p.width * size)}
+                color={p.color}
+                strokeCap="round"
+                strokeJoin="round"
+              />
+            ))}
+          </Canvas>
+        </GestureDetector>
+      </View>
     </View>
   );
 }

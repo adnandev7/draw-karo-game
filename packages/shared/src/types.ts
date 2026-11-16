@@ -7,19 +7,23 @@
 
 /** Layered vector avatar descriptor (rendered from parts, ≤ ~1 KB synced). */
 export type AvatarDescriptor = {
-  skinTone: string;
-  expression: string; // part id, e.g. "grin" | "confused" | "sparkle-eyes"
-  hairstyle: string; // part id
-  accessory: string; // part id ("none" | "chashma" | "cap" | ...)
+  skinTone: string; // the single blob color — head AND body share it (skribbl style)
+  expression: string; // eyes + brows part id, e.g. "happy" | "squint" | "glasses"
+  /** Mouth part id, e.g. "smile" | "squiggle" | "grin" (optional for older profiles). */
+  mouth?: string;
+  /** Legacy part ids kept so old profiles stay valid; the current renderer ignores them. */
+  hairstyle: string;
+  accessory: string;
   outfitColor: string;
 };
 
 export const DEFAULT_AVATAR: AvatarDescriptor = {
-  skinTone: "#c68642",
-  expression: "grin",
-  hairstyle: "short-black",
+  skinTone: "#f25c54",
+  expression: "happy",
+  mouth: "squiggle",
+  hairstyle: "none",
   accessory: "none",
-  outfitColor: "#f4a300",
+  outfitColor: "#f25c54",
 };
 
 // ─── Word packs ──────────────────────────────────────────────────────────────
