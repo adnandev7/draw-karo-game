@@ -36,8 +36,12 @@ export default function HomeScreen() {
   const createRoom = useGame((s) => s.createRoom);
   const joinRoom = useGame((s) => s.joinRoom);
   const leaveRoom = useGame((s) => s.leaveRoom);
-  const [code, setCode] = useState("");
-  const [joinMode, setJoinMode] = useState(false);
+  // An invite link (?code=TLC7) opens straight into the join screen with the
+  // code prefilled — the player card always comes first so everyone joins
+  // with their own name/avatar. Never auto-join: that would silently reuse
+  // whoever's profile is saved in this browser.
+  const [code, setCode] = useState(linkCode);
+  const [joinMode, setJoinMode] = useState(!!linkCode);
   /** Set only when the user just tapped create/join — never by a stale room. */
   const enteringRef = useRef(false);
 
@@ -47,22 +51,6 @@ export default function HomeScreen() {
   useEffect(() => {
     if (useGame.getState().room) leaveRoom();
   }, [leaveRoom]);
-
-  // Invite link: open the join screen with the code prefilled, and if the
-  // player already has a name, join straight away — one tap from a shared URL.
-  const autoJoined = useRef(false);
-  useEffect(() => {
-    if (!linkCode || autoJoined.current) return;
-    autoJoined.current = true;
-    setJoinMode(true);
-    setCode(linkCode);
-    if (profile.name.trim() && !useGame.getState().room) {
-      enteringRef.current = true;
-      joinRoom(linkCode);
-    }
-    // runs once per arrival — a stale link must never re-trigger a join
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linkCode]);
 
   // Create/join succeeded → go to the room with `push` so the browser's
   // back button returns home (replace() erased home from history, which
