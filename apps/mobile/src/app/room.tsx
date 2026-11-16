@@ -17,6 +17,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Clipboard from "expo-clipboard";
+import * as Linking from "expo-linking";
 import { t } from "../lib/strings";
 import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
@@ -168,16 +170,30 @@ function LobbyView({
   const sendChat = useGame((s) => s.sendChat);
   const canStart = room.players.length >= 2;
 
+  // shareable link — deep-links straight into the join screen with the code filled
+  const inviteLink =
+    Platform.OS === "web"
+      ? `${window.location.origin}/?code=${room.code}`
+      : Linking.createURL(`/?code=${room.code}`);
+
+  const inviteCard = (
+    <View style={styles.inviteCard}>
+      <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
+      <Text style={styles.inviteCode}>#{room.code}</Text>
+      <View style={styles.copyRow}>
+        <CopyBtn label={t.copyCode} value={room.code} />
+        <CopyBtn label={t.copyLink} value={inviteLink} />
+      </View>
+    </View>
+  );
+
   const main = (
     <ScrollView
       style={styles.lobbyScroll}
       contentContainerStyle={styles.lobbyContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.inviteCard}>
-        <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
-        <Text style={styles.inviteCode}>#{room.code}</Text>
-      </View>
+      {inviteCard}
 
       {isHost ? (
         <>
@@ -255,10 +271,7 @@ function LobbyView({
 
   return (
     <ScrollView style={styles.lobby} contentContainerStyle={styles.lobbyContentNarrow}>
-      <View style={styles.inviteCard}>
-        <Text style={styles.inviteLabel}>{t.inviteLabel}</Text>
-        <Text style={styles.inviteCode}>#{room.code}</Text>
-      </View>
+      {inviteCard}
       <Text style={styles.sectionTitle}>
         {t.players} ({room.players.length}/{room.settings.maxPlayers})
       </Text>
@@ -473,6 +486,29 @@ function GameView({
   );
 }
 
+/** Small pill that copies its value and flashes "Copied!" — code or link. */
+function CopyBtn({ label, value }: { label: string; value: string }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try {
+      if (Platform.OS === "web") await navigator.clipboard.writeText(value);
+      else await Clipboard.setStringAsync(value);
+      setDone(true);
+      setTimeout(() => setDone(false), 1400);
+    } catch {
+      // clipboard permission denied — the code is visible above anyway
+    }
+  };
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.copyBtn, pressed && styles.copyBtnPressed, done && styles.copyBtnDone]}
+      onPress={copy}
+    >
+      <Text style={styles.copyText}>{done ? t.copied : label}</Text>
+    </Pressable>
+  );
+}
+
 function LeaveButton({ floating }: { floating?: boolean }) {
   const leaveRoom = useGame((s) => s.leaveRoom);
   const btn = (
@@ -564,6 +600,23 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 0,
   },
+  copyRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 2,
+  },
+  copyBtn: {
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    borderRadius: R.pill,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  copyBtnPressed: { transform: [{ scale: 0.95 }], opacity: 0.85 },
+  copyBtnDone: { backgroundColor: C.green, borderColor: "#2c8a17" },
+  copyText: { color: "#ffffff", fontFamily: F.bold, fontSize: 12 },
   sectionTitle: {
     color: "#ffffff",
     fontFamily: F.xbold,

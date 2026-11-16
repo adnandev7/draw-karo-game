@@ -34,6 +34,9 @@ export const t = {
 
   // Lobby
   inviteLabel: "Invite code — share it with friends!",
+  copyCode: "Copy code 📋",
+  copyLink: "Copy link 🔗",
+  copied: "Copied!",
   players: "Players",
   settingsHostOnly: "Settings (host only)",
   rounds: "Rounds",

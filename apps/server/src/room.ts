@@ -51,7 +51,9 @@ const SELECT_TIME_MS = 15_000;
 const TURN_END_MS = 6_000;
 const ROUND_END_MS = 8_000;
 const GAME_END_MS = 20_000;
-const DISCONNECT_GRACE_MS = 60_000;
+/** Generous reconnect window — mobile browsers/app switchers can freeze a tab
+ * for minutes; skribbl's "backgrounded = kicked" annoyance must not happen. */
+const DISCONNECT_GRACE_MS = 3 * 60_000;
 /** Hint reveal starts when this fraction of draw time remains (skribbl-style). */
 const HINT_FRACTIONS = [0.6, 0.35, 0.15];
 
@@ -202,6 +204,23 @@ export class Room {
       socket.join(this.channel);
       this.sockets.set(profile.profileId, socket);
       this.systemMsg(`${profile.name} is back!`);
+      // The drawer missed the one-shot word/options event while away —
+      // hand them over again so a backgrounded drawer can keep drawing.
+      if (this.drawerId === profile.profileId) {
+        if (this.phase === "selecting" && this.wordOptions.length > 0) {
+          socket.emit("turn:selecting", {
+            drawerId: profile.profileId,
+            wordMask: "",
+            words: this.wordOptions.map((w) => w.word),
+          });
+        } else if (this.phase === "drawing" && this.word) {
+          socket.emit("turn:drawing", {
+            drawerId: profile.profileId,
+            wordLength: this.word.word.length,
+            word: this.word.word,
+          });
+        }
+      }
       this.broadcastState();
       return { ok: true, roomState: this.state() };
     }
@@ -774,9 +793,11 @@ export class Room {
     this.toAll("player:kicked", targetId, "Kicked by host");
   }
 
-  /** Sweep check used by the manager to delete truly empty rooms. */
+  /** Sweep check used by the manager to delete truly empty rooms.
+   * Long window: if everyone backgrounds at once, the room must still be
+   * here when they all come back. */
   isAbandoned(): boolean {
-    return this.players.size === 0 && this.emptySince !== null && now() - this.emptySince > 30_000;
+    return this.players.size === 0 && this.emptySince !== null && now() - this.emptySince > 10 * 60_000;
   }
 
   destroy(): void {

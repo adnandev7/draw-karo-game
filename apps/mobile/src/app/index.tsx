@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { t } from "../lib/strings";
 import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
@@ -19,6 +19,14 @@ const COLUMN = 420;
 
 export default function HomeScreen() {
   const router = useRouter();
+  // shareable invite links land here: /?code=TLC7
+  const params = useLocalSearchParams<{ code?: string | string[] }>();
+  const linkCode = (
+    Array.isArray(params.code) ? params.code[0] : params.code ?? ""
+  )
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 4);
   const profile = useGame((s) => s.profile);
   const setName = useGame((s) => s.setName);
   const setAvatar = useGame((s) => s.setAvatar);
@@ -39,6 +47,22 @@ export default function HomeScreen() {
   useEffect(() => {
     if (useGame.getState().room) leaveRoom();
   }, [leaveRoom]);
+
+  // Invite link: open the join screen with the code prefilled, and if the
+  // player already has a name, join straight away — one tap from a shared URL.
+  const autoJoined = useRef(false);
+  useEffect(() => {
+    if (!linkCode || autoJoined.current) return;
+    autoJoined.current = true;
+    setJoinMode(true);
+    setCode(linkCode);
+    if (profile.name.trim() && !useGame.getState().room) {
+      enteringRef.current = true;
+      joinRoom(linkCode);
+    }
+    // runs once per arrival — a stale link must never re-trigger a join
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkCode]);
 
   // Create/join succeeded → go to the room with `push` so the browser's
   // back button returns home (replace() erased home from history, which
@@ -123,6 +147,7 @@ export default function HomeScreen() {
                 placeholderTextColor={C.panelDim}
                 maxLength={16}
                 autoCapitalize="words"
+                autoFocus={!!linkCode && !profile.name.trim()}
               />
             </View>
           </View>
