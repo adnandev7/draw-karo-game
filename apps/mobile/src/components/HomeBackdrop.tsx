@@ -206,8 +206,11 @@ const styles = StyleSheet.create({
   wave: {
     position: "absolute",
     bottom: -16,
-    left: -600,
-    width: 2400,
+    // Wide enough that the strip always covers the whole screen for the full
+    // drift range [-600..0]: it spans [-1600..3000] worst-case, so the right
+    // edge can never slide inward and cut off (resizeMode repeat tiles it).
+    left: -1000,
+    width: 4600,
     height: 90,
   },
   waveLow: {
