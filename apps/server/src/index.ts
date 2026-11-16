@@ -139,6 +139,12 @@ io.on("connection", (socket) => {
     room.sendReaction(socket.data.profileId, String(emoji ?? ""));
   });
 
+  socket.on("draw:rate", (rating) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId) return;
+    room.rateDrawing(socket.data.profileId, rating === "dislike" ? "dislike" : "like");
+  });
+
   socket.on("host:kick", (playerId) => {
     const room = withRoom();
     if (!room || !socket.data.profileId) return;

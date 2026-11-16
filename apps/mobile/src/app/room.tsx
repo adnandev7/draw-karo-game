@@ -5,6 +5,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -27,6 +29,7 @@ import { PlayerList } from "../components/game/PlayerStrip";
 import { GameBar } from "../components/game/GameBar";
 import { GameBackdrop } from "../components/HomeBackdrop";
 import {
+  ChoosingOverlay,
   GameEndOverlay,
   RoundEndOverlay,
   TurnEndOverlay,
@@ -34,6 +37,55 @@ import {
 } from "../components/game/Overlays";
 
 const WIDE = 860;
+
+/** Reaction chips — standard corny set, kept in sync with the server's allowlist. */
+const REACTION_CHIPS = ["❤️", "😂", "😮", "😱", "🔥", "👏"] as const;
+
+/**
+ * Floating emoji over the canvas — fires on any reaction:broadcast
+ * (reactions, likes and dislikes all ride the same event).
+ * Remounts per reaction (keyed by ts) so each bubble animates fresh.
+ */
+function FloatReaction() {
+  const lastReaction = useGame((s) => s.lastReaction);
+  const players = useGame((s) => s.room?.players);
+  if (!lastReaction) return null;
+  const name = players?.find((p) => p.id === lastReaction.playerId)?.name ?? "?";
+  return <FloatBubble key={lastReaction.ts} emoji={lastReaction.emoji} name={name} />;
+}
+
+function FloatBubble({ emoji, name }: { emoji: string; name: string }) {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    const anim = Animated.timing(val, {
+      toValue: 1,
+      duration: 1_800,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [val]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.floatReaction,
+        {
+          opacity: val.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+          transform: [
+            { translateY: val.interpolate({ inputRange: [0, 1], outputRange: [0, -70] }) },
+            { scale: val.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.6, 1.15, 1] }) },
+          ],
+        },
+      ]}
+    >
+      <Text style={styles.floatEmoji}>{emoji}</Text>
+      <Text style={styles.floatName}>{name}</Text>
+    </Animated.View>
+  );
+}
 
 export default function RoomScreen() {
   const router = useRouter();
@@ -74,7 +126,13 @@ export default function RoomScreen() {
 
       {/* overlays */}
       {room.phase === "selecting" && isDrawer && myWordOptions ? (
-        <WordChoiceOverlay words={myWordOptions} />
+        <WordChoiceOverlay words={myWordOptions} seconds={Math.ceil(room.timeLeftMs / 1000)} />
+      ) : null}
+      {room.phase === "selecting" && !isDrawer && room.drawerId ? (
+        <ChoosingOverlay
+          name={room.players.find((p) => p.id === room.drawerId)?.name ?? "?"}
+          avatar={room.players.find((p) => p.id === room.drawerId)?.avatar ?? null}
+        />
       ) : null}
       {room.phase === "turnEnd" && turnEnd ? (
         <TurnEndOverlay word={turnEnd.word} drawerId={turnEnd.drawerId} results={turnEnd.results} />
@@ -322,6 +380,7 @@ function GameView({
   const clearCanvas = useGame((s) => s.clearCanvas);
   const sendGuess = useGame((s) => s.sendGuess);
   const sendReaction = useGame((s) => s.sendReaction);
+  const rateDrawing = useGame((s) => s.rateDrawing);
   const [color, setColor] = useState("#111111");
   const [width, setWidth] = useState(0.014);
   const [tool, setTool] = useState<"brush" | "eraser">("brush");
@@ -348,6 +407,18 @@ function GameView({
     <PlayerList players={room.players} drawerId={room.drawerId} layout={wide ? "rows" : "strip"} />
   );
 
+  // skribbl: every non-drawer can react while the drawing is live —
+  // guessed players included
+  const reactionChips = !isDrawer && room.phase === "drawing" ? (
+    <View style={styles.reactionRow}>
+      {REACTION_CHIPS.map((e) => (
+        <Pressable key={e} style={styles.reactionBtn} onPress={() => sendReaction(e)}>
+          <Text style={{ fontSize: 18 }}>{e}</Text>
+        </Pressable>
+      ))}
+    </View>
+  ) : null;
+
   const canvasBlock = (
     <View style={styles.canvasBlock}>
       {closeHint ? (
@@ -364,6 +435,26 @@ function GameView({
           tool={tool}
           onBatch={pushStrokeBatch}
         />
+        {/* skribbl's thumbs over the canvas — guessers rate the drawing */}
+        {!isDrawer && (room.phase === "drawing" || room.phase === "turnEnd") ? (
+          <View style={styles.rateRow} pointerEvents="box-none">
+            <Pressable
+              style={styles.rateBtn}
+              accessibilityLabel={t.likeDrawing}
+              onPress={() => rateDrawing("like")}
+            >
+              <Text style={styles.rateEmoji}>👍</Text>
+            </Pressable>
+            <Pressable
+              style={styles.rateBtn}
+              accessibilityLabel={t.dislikeDrawing}
+              onPress={() => rateDrawing("dislike")}
+            >
+              <Text style={styles.rateEmoji}>👎</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <FloatReaction />
       </View>
       {isDrawer ? (
         <Toolbar
@@ -379,18 +470,9 @@ function GameView({
           onClear={clearCanvas}
         />
       ) : null}
+      {reactionChips}
     </View>
   );
-
-  const reactions = !isDrawer && !me?.guessedCurrent ? (
-    <View style={styles.reactionRow}>
-      {["😂", "🔥", "💀", "👏"].map((e) => (
-        <Pressable key={e} style={styles.reactionBtn} onPress={() => sendReaction(e)}>
-          <Text style={{ fontSize: 18 }}>{e}</Text>
-        </Pressable>
-      ))}
-    </View>
-  ) : null;
 
   if (wide) {
     return (
@@ -418,7 +500,6 @@ function GameView({
       {gameBar}
       {playersBlock}
       {canvasBlock}
-      {reactions}
       <View style={styles.narrowChat}>
         <ChatPanel
           entries={room.chat}
@@ -434,10 +515,18 @@ function GameView({
 
 function LeaveButton({ floating }: { floating?: boolean }) {
   const leaveRoom = useGame((s) => s.leaveRoom);
-  return (
-    <Pressable style={[styles.leave, floating && styles.leaveFloating]} onPress={leaveRoom}>
+  const btn = (
+    <Pressable style={styles.leave} onPress={leaveRoom}>
       <Text style={styles.leaveText}>🚪 Leave</Text>
     </Pressable>
+  );
+  if (!floating) return btn;
+  // box-none wrapper: the full-width strip must not eat clicks aimed at
+  // the reaction chips / chat that sit underneath it
+  return (
+    <View style={styles.leaveFloating} pointerEvents="box-none">
+      {btn}
+    </View>
   );
 }
 
@@ -611,10 +700,52 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  narrowChat: { flex: 1, minHeight: 140 },
+  // like / dislike thumbs over the canvas (skribbl)
+  rateRow: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    gap: 6,
+  },
+  rateBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#ffffff",
+    borderWidth: 2,
+    borderColor: C.canvasInk,
+    alignItems: "center",
+    justifyContent: "center",
+    ...flatShadow,
+  },
+  rateEmoji: { fontSize: 17 },
+  // floating reaction bubble
+  floatReaction: {
+    position: "absolute",
+    top: 14,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  floatEmoji: { fontSize: 34 },
+  floatName: {
+    color: "#ffffff",
+    fontFamily: F.xbold,
+    fontSize: 11,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  narrowChat: { flex: 1, minHeight: 140, marginBottom: 30 },
 
-  leave: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 12 },
-  leaveFloating: { position: "absolute", bottom: 6, left: 0, right: 0 },
+  leave: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 12 },
+  leaveFloating: {
+    position: "absolute",
+    bottom: 6,
+    left: 8,
+    alignItems: "flex-start",
+  },
   leaveText: { color: "#ffffff", fontSize: 12, fontFamily: F.bold, opacity: 0.8 },
 
   errorToast: {

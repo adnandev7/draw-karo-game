@@ -4,7 +4,7 @@
  * avatar customizer, big green Create Room, blue Join with a code.
  * Everything is centered in one column that scales with the viewport.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { t } from "../lib/strings";
@@ -27,11 +27,27 @@ export default function HomeScreen() {
   const room = useGame((s) => s.room);
   const createRoom = useGame((s) => s.createRoom);
   const joinRoom = useGame((s) => s.joinRoom);
+  const leaveRoom = useGame((s) => s.leaveRoom);
   const [code, setCode] = useState("");
   const [joinMode, setJoinMode] = useState(false);
+  /** Set only when the user just tapped create/join — never by a stale room. */
+  const enteringRef = useRef(false);
 
+  // Arrived home while still holding a room (e.g. the browser back button
+  // from /room): that back press means "leave" — clear the room so home is
+  // fresh instead of yanking the player straight back into it.
   useEffect(() => {
-    if (room) router.replace("/room");
+    if (useGame.getState().room) leaveRoom();
+  }, [leaveRoom]);
+
+  // Create/join succeeded → go to the room with `push` so the browser's
+  // back button returns home (replace() erased home from history, which
+  // is why back used to close the site).
+  useEffect(() => {
+    if (room && enteringRef.current) {
+      enteringRef.current = false;
+      router.push("/room");
+    }
   }, [room, router]);
 
   const busy = connection === "connecting";
@@ -120,11 +136,17 @@ export default function HomeScreen() {
         ) : null}
 
         {joinMode ? (
-          <PillButton blue disabled={!canJoin || busy} onPress={() => joinRoom(code)}>
+          <PillButton blue disabled={!canJoin || busy} onPress={() => {
+            enteringRef.current = true;
+            joinRoom(code);
+          }}>
             {busy ? t.connecting : t.joinRoom}
           </PillButton>
         ) : (
-          <PillButton disabled={!profile.name.trim() || busy} onPress={() => createRoom()}>
+          <PillButton disabled={!profile.name.trim() || busy} onPress={() => {
+            enteringRef.current = true;
+            createRoom();
+          }}>
             {busy ? t.connecting : t.createRoom}
           </PillButton>
         )}
@@ -326,7 +348,9 @@ const styles = StyleSheet.create({
   nameInput: {
     backgroundColor: C.inputBg,
     borderRadius: R.pill,
-    borderWidth: 1,
+    // 1.5px: RN Web hairline-rounds a plain 1px border to 0.8 device px,
+    // which reads as a broken/undersized border on high-DPI screens
+    borderWidth: 1.5,
     borderColor: C.inputBorder,
     paddingHorizontal: 16,
     paddingVertical: 11,
@@ -339,6 +363,8 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
     fontFamily: F.black,
     fontSize: 20,
+    alignSelf: "stretch",
+    width: "100%",
   },
   btn: {
     borderRadius: R.pill,

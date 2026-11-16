@@ -95,7 +95,7 @@ export type ChatEntry = {
   playerId: string;
   playerName: string;
   text: string;
-  kind: "chat" | "correct" | "system";
+  kind: "chat" | "correct" | "system" | "reaction";
 };
 
 /** A drawing stroke. Coordinates normalized 0..1 (resolution independent). */

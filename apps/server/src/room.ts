@@ -43,7 +43,8 @@ type RoomPlayer = Player & {
 };
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const REACTION_EMOJIS = new Set(["😂", "💀", "🔥", "😱", "❤️", "🙏", "👏", "🤡"]);
+/** Standard corny set shown as reaction chips in the UI — keep in sync. */
+const REACTION_EMOJIS = new Set(["❤️", "😂", "😮", "😱", "🔥", "👏"]);
 const GUESS_WINDOW_MS = 5_000;
 const GUESS_MAX_PER_WINDOW = 6;
 const SELECT_TIME_MS = 15_000;
@@ -88,6 +89,7 @@ export class Room {
   private hintMarkIndex = 0;
   private guessCount = 0;
   private lastReactionAt = new Map<string, number>();
+  private lastRateAt = new Map<string, number>();
   private usedWords = new Set<string>();
   private emptySince: number | null = null;
   onEmpty: (code: string) => void = () => {};
@@ -384,6 +386,12 @@ export class Room {
       const random = options[Math.floor(Math.random() * options.length)];
       this.startDrawing(random);
     });
+    // per-second tick so every client's word-choice countdown stays live
+    const ticker = setInterval(() => {
+      if (this.phase !== "selecting") return;
+      this.broadcastState();
+    }, 1_000);
+    this.timers.push(ticker as unknown as NodeJS.Timeout);
   }
 
   private pickWords(count: number): WordEntry[] {
@@ -506,13 +514,20 @@ export class Room {
     if (this.phase !== "drawing" || this.drawerId !== senderId) return;
     if (!delta.points || delta.points.length === 0) return;
     if (this.strokes.length > 400) return; // safety cap
-    this.strokes.push({
-      id: delta.strokeId,
-      color: delta.color,
-      width: delta.width,
-      tool: delta.tool,
-      points: delta.points,
-    });
+    // batches of the same gesture append to one continuous stroke so
+    // snapshots (late joins) render smooth lines, not dashes
+    const last = this.strokes[this.strokes.length - 1];
+    if (last && last.id === delta.strokeId) {
+      last.points.push(...delta.points);
+    } else {
+      this.strokes.push({
+        id: delta.strokeId,
+        color: delta.color,
+        width: delta.width,
+        tool: delta.tool,
+        points: delta.points,
+      });
+    }
     this.toAll("draw:stroke", delta);
   }
 
@@ -618,9 +633,29 @@ export class Room {
 
   sendReaction(senderId: string, emoji: string): void {
     if (!REACTION_EMOJIS.has(emoji)) return;
+    const player = this.players.get(senderId);
+    if (!player || !player.connected) return;
     const last = this.lastReactionAt.get(senderId) ?? 0;
     if (now() - last < 2_000) return;
     this.lastReactionAt.set(senderId, now());
+    // skribbl-style: reactions land in the chat too — "X reacted 🔥"
+    this.pushChat(senderId, `reacted ${emoji}`, "reaction");
+    this.toAll("reaction:broadcast", { playerId: senderId, emoji });
+  }
+
+  /** Thumbs up/down on the current drawing — lands in chat as "X liked the drawing 👍". */
+  rateDrawing(senderId: string, rating: "like" | "dislike"): void {
+    if (this.phase !== "drawing" && this.phase !== "turnEnd") return;
+    if (!this.drawerId || senderId === this.drawerId) return;
+    const player = this.players.get(senderId);
+    if (!player || !player.connected) return;
+    const key = `${senderId}:${rating}`;
+    const last = this.lastRateAt.get(key) ?? 0;
+    if (now() - last < 2_500) return;
+    this.lastRateAt.set(key, now());
+    const emoji = rating === "like" ? "👍" : "👎";
+    this.pushChat(senderId, rating === "like" ? "liked the drawing 👍" : "disliked the drawing 👎", "reaction");
+    // same floating-emoji pipeline as reactions
     this.toAll("reaction:broadcast", { playerId: senderId, emoji });
   }
 

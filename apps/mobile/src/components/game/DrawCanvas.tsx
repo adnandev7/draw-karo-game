@@ -25,13 +25,13 @@ export type DrawCanvasProps = {
 
 type Props = DrawCanvasProps;
 
-function buildSkPath(stroke: Stroke, size: number): SkPath {
+function buildSkPath(stroke: Stroke, w: number, h: number): SkPath {
   const builder = Skia.PathBuilder.Make();
   const pts = stroke.points;
   if (pts.length > 0) {
-    builder.moveTo(pts[0].x * size, pts[0].y * size);
+    builder.moveTo(pts[0].x * w, pts[0].y * h);
     for (let i = 1; i < pts.length; i++) {
-      builder.lineTo(pts[i].x * size, pts[i].y * size);
+      builder.lineTo(pts[i].x * w, pts[i].y * h);
     }
   }
   return builder.build();
@@ -39,7 +39,9 @@ function buildSkPath(stroke: Stroke, size: number): SkPath {
 
 function DrawCanvasInner({ isDrawer, strokes, color, width, tool, onBatch }: Props) {
   const { width: winWidth } = useWindowDimensions();
-  const [size, setSize] = useState(Math.min(winWidth - 16, 400));
+  // skribbl draws on a 4:3 surface — fill the available card space with it
+  // instead of a small centered square.
+  const [dims, setDims] = useState({ w: Math.min(winWidth - 16, 533), h: Math.min(winWidth - 16, 533) * 0.75 });
   const gestureId = useRef("");
   const pending = useRef<{ x: number; y: number }[]>([]);
   const lastPoint = useRef<{ x: number; y: number } | null>(null);
@@ -86,13 +88,13 @@ function DrawCanvasInner({ isDrawer, strokes, color, width, tool, onBatch }: Pro
         .minDistance(0)
         .onBegin((e) => {
           gestureId.current = `g_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-          const p = { x: e.x / size, y: e.y / size };
+          const p = { x: e.x / dims.w, y: e.y / dims.h };
           pending.current = [p];
           lastPoint.current = p;
           startFlushTimer();
         })
         .onUpdate((e) => {
-          const p = { x: e.x / size, y: e.y / size };
+          const p = { x: e.x / dims.w, y: e.y / dims.h };
           const last = lastPoint.current;
           if (last && Math.hypot(p.x - last.x, p.y - last.y) < MIN_POINT_DIST) return;
           lastPoint.current = p;
@@ -103,21 +105,25 @@ function DrawCanvasInner({ isDrawer, strokes, color, width, tool, onBatch }: Pro
           flush();
         })
         .onFinalize(() => stopFlushTimer()),
-    [isDrawer, size, startFlushTimer, stopFlushTimer, flush]
+    [isDrawer, dims, startFlushTimer, stopFlushTimer, flush]
   );
   /* eslint-enable react-hooks/refs, react-hooks/purity */
 
   const paths = useMemo(
     () =>
       strokes
-        .map((s) => ({ path: buildSkPath(s, size), color: s.color, width: s.width }))
+        .map((s) => ({ path: buildSkPath(s, dims.w, dims.h), color: s.color, width: s.width }))
         .filter((p) => !p.path.isEmpty()),
-    [strokes, size]
+    [strokes, dims]
   );
 
   const onLayout = useCallback((e: { width: number; height: number }) => {
-    const next = Math.floor(Math.min(e.width, e.height));
-    if (next > 0) setSize(next);
+    // fit a 4:3 surface into the available card space
+    const availW = Math.max(0, e.width - 8);
+    const availH = Math.max(0, e.height - 8);
+    const w = Math.floor(Math.min(availW, (availH * 4) / 3));
+    const h = Math.floor((w * 3) / 4);
+    if (w > 0 && h > 0) setDims((d) => (Math.abs(d.w - w) < 2 && Math.abs(d.h - h) < 2 ? d : { w, h }));
   }, []);
 
   return (
@@ -132,9 +138,9 @@ function DrawCanvasInner({ isDrawer, strokes, color, width, tool, onBatch }: Pro
     >
       <View
         style={{
-          width: size,
-          height: size,
-          borderRadius: 16,
+          width: dims.w,
+          height: dims.h,
+          borderRadius: 12,
           overflow: "hidden",
           borderWidth: 2,
           borderColor: "#d8e6f5",
@@ -142,14 +148,14 @@ function DrawCanvasInner({ isDrawer, strokes, color, width, tool, onBatch }: Pro
         }}
       >
         <GestureDetector gesture={gesture}>
-          <Canvas style={{ width: size, height: size }}>
+          <Canvas style={{ width: dims.w, height: dims.h }}>
             <Fill color={CANVAS_BG} />
             {paths.map((p, i) => (
               <Path
                 key={i}
                 path={p.path}
                 style="stroke"
-                strokeWidth={Math.max(1, p.width * size)}
+                strokeWidth={Math.max(1, p.width * dims.w)}
                 color={p.color}
                 strokeCap="round"
                 strokeJoin="round"

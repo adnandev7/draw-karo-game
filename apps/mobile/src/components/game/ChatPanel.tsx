@@ -51,10 +51,15 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
                   styles.line,
                   item.kind === "system" && styles.system,
                   item.kind === "correct" && styles.correctText,
+                  item.kind === "reaction" && styles.reactionLine,
                 ]}
                 numberOfLines={2}
               >
-                {item.kind === "system" ? `— ${item.text} —` : `${item.playerName}: ${item.text}`}
+                {item.kind === "system"
+                  ? `— ${item.text} —`
+                  : item.kind === "reaction"
+                    ? `${item.playerName} ${item.text}`
+                    : `${item.playerName}: ${item.text}`}
               </Text>
             </View>
           );
@@ -117,6 +122,11 @@ const styles = StyleSheet.create({
     color: "#1c7a12",
     fontFamily: F.xbold,
   },
+  reactionLine: {
+    color: "#555555",
+    fontStyle: "italic",
+    fontFamily: F.regular,
+  },
   hidden: { display: "none" },
   inputRow: {
     flexDirection: "row",
@@ -127,7 +137,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: "#ffffff",
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: C.inputBorder,
     borderRadius: R.pill,
     paddingHorizontal: 14,

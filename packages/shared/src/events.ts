@@ -45,6 +45,8 @@ export type ClientToServerEvents = {
 
   // Social
   "reaction:send": (emoji: string) => void;
+  /** Rate the current drawing (skribbl's like/dislike thumbs). */
+  "draw:rate": (rating: "like" | "dislike") => void;
 
   // Funniest Drawing Award
   "award:vote": (drawingOwnerId: string) => void;

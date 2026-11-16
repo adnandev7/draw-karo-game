@@ -217,8 +217,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   nameMe: { color: C.meGuessed },
-  crown: { fontSize: 11 },
-  pen: { fontSize: 12 },
+  // emoji sit on a low baseline next to text — nudge up to true-center
+  crown: { fontSize: 11, lineHeight: 12, transform: [{ translateY: -1 }] },
+  pen: { fontSize: 12, lineHeight: 13, transform: [{ translateY: -1 }] },
   score: {
     color: "#555555",
     fontFamily: F.semibold,

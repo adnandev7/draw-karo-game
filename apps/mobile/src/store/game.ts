@@ -101,6 +101,7 @@ type GameStore = {
   sendGuess: (text: string) => void;
   sendChat: (text: string) => void;
   sendReaction: (emoji: string) => void;
+  rateDrawing: (rating: "like" | "dislike") => void;
   dismissTurnEnd: () => void;
 };
 
@@ -180,7 +181,8 @@ export const useGame = create<GameStore>((set, get) => ({
   pushStrokeBatch: (delta) => {
     const room = get().room;
     if (!room) return;
-    // optimistic local append; server snapshots carry the same content
+    // optimistic local append; batches with the same strokeId merge into one
+    // continuous stroke so fast drawing never renders as dashes
     const seg: Stroke = {
       id: delta.strokeId,
       color: delta.color,
@@ -188,7 +190,12 @@ export const useGame = create<GameStore>((set, get) => ({
       tool: delta.tool,
       points: delta.points,
     };
-    set({ room: { ...room, strokes: [...room.strokes, seg] } });
+    const last = room.strokes[room.strokes.length - 1];
+    const strokes =
+      last && last.id === delta.strokeId
+        ? [...room.strokes.slice(0, -1), { ...last, points: [...last.points, ...seg.points] }]
+        : [...room.strokes, seg];
+    set({ room: { ...room, strokes } });
     socket.emit("draw:stroke", delta);
   },
 
@@ -212,6 +219,7 @@ export const useGame = create<GameStore>((set, get) => ({
   sendGuess: (text) => socket.emit("guess:text", text),
   sendChat: (text) => socket.emit("chat:msg", text),
   sendReaction: (emoji) => socket.emit("reaction:send", emoji),
+  rateDrawing: (rating) => socket.emit("draw:rate", rating),
 
   dismissTurnEnd: () => set({ turnEnd: null }),
 }));
@@ -252,7 +260,15 @@ socket.on("draw:stroke", (delta) => {
       tool: delta.tool,
       points: delta.points,
     };
-    return { room: { ...s.room, strokes: [...s.room.strokes, seg] } };
+    // batches of the same gesture merge into one continuous stroke
+    const strokes = [...s.room.strokes];
+    const last = strokes[strokes.length - 1];
+    if (last && last.id === delta.strokeId) {
+      strokes[strokes.length - 1] = { ...last, points: [...last.points, ...seg.points] };
+    } else {
+      strokes.push(seg);
+    }
+    return { room: { ...s.room, strokes } };
   });
 });
 

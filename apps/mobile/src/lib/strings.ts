@@ -62,6 +62,14 @@ export const t = {
   winnerWinner: "🏆 Winner Winner!",
   rematchComing: "Heading back to the lobby for a rematch...",
 
+  // Word choice
+  pickFast: "Pick fast!",
+  choosingWord: (name: string) => `${name} is choosing a word!`,
+
+  // Drawing reactions
+  likeDrawing: "Like the drawing",
+  dislikeDrawing: "Dislike the drawing",
+
   // Canvas (web loader)
   canvasLoading: "Loading the canvas...",
 } as const;
