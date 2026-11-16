@@ -71,20 +71,22 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
         </View>
       ) : (
         <View style={styles.inputRow}>
-          <View style={styles.inputShell}>
-            <TextInput
-              style={styles.input}
-              value={text}
-              onChangeText={setText}
-              placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
-              placeholderTextColor={C.panelDim}
-              onSubmitEditing={submit}
-              returnKeyType="send"
-              blurOnSubmit={false}
-            />
-            <Pressable onPress={submit} style={styles.send}>
-              <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
-            </Pressable>
+          <View style={styles.inputGlow}>
+            <View style={styles.inputShell}>
+              <TextInput
+                style={styles.input}
+                value={text}
+                onChangeText={setText}
+                placeholder={isDrawer ? t.drawerChatPlaceholder : t.guessPlaceholder}
+                placeholderTextColor={C.panelDim}
+                onSubmitEditing={submit}
+                returnKeyType="send"
+                blurOnSubmit={false}
+              />
+              <Pressable onPress={submit} style={styles.send}>
+                <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       )}
@@ -98,7 +100,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
     backgroundColor: "#ffffff",
     borderRadius: R.m,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: C.panelBorder,
     overflow: "hidden",
   },
@@ -136,15 +138,21 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 6,
   },
-  // border on the shell, not the TextInput — always pixel-perfect
+  // skribbl's soft blue glow ring around the chat field — no hard border
+  inputGlow: {
+    flex: 1,
+    flexDirection: "row",
+    borderRadius: R.pill,
+    padding: 3,
+    backgroundColor: C.inputGlow,
+  },
+  // the white field itself: borderless inside the glow wrapper
   inputShell: {
     flex: 1,
     height: 38,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#ffffff",
-    borderWidth: 1.5,
-    borderColor: C.inputBorder,
     borderRadius: R.pill,
     overflow: "hidden",
   },

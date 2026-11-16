@@ -30,6 +30,8 @@ export const C = {
   inputText: "#2c2c2c",
   inputBorder: "#707070",
   inputFocus: "#56b2fd",
+  /** Soft blue glow ring that hugs every text field (skribbl's input look). */
+  inputGlow: "#8fb9f0",
 
   /** Actions. */
   green: "#53e237",

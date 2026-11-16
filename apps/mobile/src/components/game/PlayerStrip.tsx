@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   // vertical rows (skribbl sidebar)
   rowsWrap: {
     borderRadius: R.m,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: C.panelBorder,
     overflow: "hidden",
   },
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     gap: 5,
     backgroundColor: "#ffffff",
     borderRadius: R.m,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: C.panelBorder,
     paddingHorizontal: 8,
     paddingVertical: 5,

@@ -199,7 +199,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
             height: dot * 1.6,
             borderRadius: size,
             backgroundColor: "#ffffff",
-            borderWidth: Math.max(1.5, hw * 0.05),
+            borderWidth: Math.max(2, hw * 0.05),
             borderColor: dark,
             alignItems: "center",
             justifyContent: "center",

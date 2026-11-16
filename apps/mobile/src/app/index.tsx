@@ -113,29 +113,33 @@ export default function HomeScreen() {
               <FunkyDice />
             </Pressable>
           </View>
-          <View style={styles.inputShell}>
-            <TextInput
-              style={styles.nameInput}
-              value={profile.name}
-              onChangeText={setName}
-              placeholder={t.namePlaceholder}
-              placeholderTextColor={C.panelDim}
-              maxLength={16}
-              autoCapitalize="words"
-            />
+          <View style={styles.inputGlow}>
+            <View style={styles.inputShell}>
+              <TextInput
+                style={styles.nameInput}
+                value={profile.name}
+                onChangeText={setName}
+                placeholder={t.namePlaceholder}
+                placeholderTextColor={C.panelDim}
+                maxLength={16}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
         </View>
 
         {joinMode ? (
-          <View style={styles.inputShell}>
-            <TextInput
-              style={[styles.nameInput, styles.codeInput]}
-              value={code}
-              onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
-              placeholder={t.roomCodePlaceholder}
-              placeholderTextColor={C.panelDim}
-              autoCapitalize="characters"
-            />
+          <View style={styles.inputGlow}>
+            <View style={styles.inputShell}>
+              <TextInput
+                style={[styles.nameInput, styles.codeInput]}
+                value={code}
+                onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
+                placeholder={t.roomCodePlaceholder}
+                placeholderTextColor={C.panelDim}
+                autoCapitalize="characters"
+              />
+            </View>
           </View>
         ) : null}
 
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: C.panel,
     borderRadius: R.m + 4,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: C.panelBorder,
     padding: 12,
     gap: 12,
@@ -311,7 +315,7 @@ const styles = StyleSheet.create({
     gap: 18,
     backgroundColor: "rgba(0,0,0,0.22)",
     borderRadius: R.m,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "rgba(0,0,0,0.25)",
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -345,15 +349,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   randomizePressed: { transform: [{ scale: 0.85 }, { rotate: "12deg" }] },
-  // The border lives on this shell (not the TextInput) so it always wraps
-  // the field pixel-perfectly — RN Web renders TextInput borders thin/clipped.
+  // Skribbl's input look: no hard border — a soft blue glow ring hugging
+  // the white field (the ring lives on this wrapper so it renders at any DPI).
+  inputGlow: {
+    alignSelf: "stretch",
+    width: "100%",
+    borderRadius: R.pill,
+    padding: 3,
+    backgroundColor: C.inputGlow,
+  },
   inputShell: {
     alignSelf: "stretch",
     width: "100%",
     height: 46,
     borderRadius: R.pill,
-    borderWidth: 1.5,
-    borderColor: C.inputBorder,
     backgroundColor: C.inputBg,
     overflow: "hidden",
   },
