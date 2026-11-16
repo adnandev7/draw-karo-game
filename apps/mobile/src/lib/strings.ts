@@ -59,7 +59,7 @@ export const t = {
   drawnBy: (name: string) => `Drawn by ${name}`,
   nextTurnComing: "Next turn is coming up...",
   roundDone: (round: number) => `Round ${round} done! 🏁`,
-  winnerWinner: "🏆 Winner Winner!",
+  winnerIs: "is the winner!",
   rematchComing: "Heading back to the lobby for a rematch...",
 
   // Word choice

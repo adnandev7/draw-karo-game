@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: C.panel,
     borderRadius: R.m + 4,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     padding: 12,
     gap: 12,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     gap: 18,
     backgroundColor: "rgba(0,0,0,0.22)",
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "rgba(0,0,0,0.25)",
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -349,35 +349,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   randomizePressed: { transform: [{ scale: 0.85 }, { rotate: "12deg" }] },
-  // Skribbl's input look: no hard border — a soft blue glow ring hugging
-  // the white field (the ring lives on this wrapper so it renders at any DPI).
+  // Skribbl's input look: white rounded-rect (not a pill), left-aligned text,
+  // soft blue glow ring hugging the field — ring lives on this wrapper so it
+  // renders identically at any DPI, and no inner border of any kind.
   inputGlow: {
     alignSelf: "stretch",
     width: "100%",
-    borderRadius: R.pill,
-    padding: 3,
+    borderRadius: 14,
+    padding: 4,
     backgroundColor: C.inputGlow,
   },
   inputShell: {
     alignSelf: "stretch",
     width: "100%",
-    height: 46,
-    borderRadius: R.pill,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: C.inputBg,
     overflow: "hidden",
   },
   nameInput: {
     height: "100%",
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     color: C.inputText,
     fontSize: 16,
     fontFamily: F.bold,
-    textAlign: "center",
+    textAlign: "left",
   },
   codeInput: {
-    letterSpacing: 8,
+    letterSpacing: 4,
     fontFamily: F.black,
-    fontSize: 20,
+    fontSize: 18,
+    textAlign: "left",
   },
   btn: {
     borderRadius: R.pill,

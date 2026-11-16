@@ -96,6 +96,8 @@ export type ChatEntry = {
   playerName: string;
   text: string;
   kind: "chat" | "correct" | "system" | "reaction";
+  /** Client-local creation time (ms) — drives the beside-name chat bubbles. */
+  ts: number;
 };
 
 /** A drawing stroke. Coordinates normalized 0..1 (resolution independent). */

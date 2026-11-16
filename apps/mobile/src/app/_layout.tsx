@@ -36,6 +36,19 @@ export default function RootLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Web-only: Chrome draws its native black focus ring on every focused text
+  // field, which bleeds through our skribbl-style glow wrapper as an ugly
+  // dark line. Kill it globally — the fields carry no inner border at all.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const style = document.createElement("style");
+    style.textContent =
+      "input, textarea { outline: none !important; box-shadow: none !important; border: 0 !important; }" +
+      "input:focus, textarea:focus { outline: none !important; box-shadow: none !important; }";
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
   const ready = skiaReady && fontsLoaded;
 
   return (

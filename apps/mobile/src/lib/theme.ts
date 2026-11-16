@@ -57,8 +57,9 @@ export const C = {
   me: "#4998ff",
   meGuessed: "#0048b5",
   chatRowAlt: "#ececec",
-  guessedRow: "#e7ffdf",
-  guessedRowAlt: "#cfffbd",
+  // skribbl's saturated green rows for players who guessed the word
+  guessedRow: "#8ed671",
+  guessedRowAlt: "#7bc95f",
 
   /** Canvas & overlays. */
   canvas: "#ffffff",

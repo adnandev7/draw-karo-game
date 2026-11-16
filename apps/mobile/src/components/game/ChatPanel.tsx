@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
     backgroundColor: "#ffffff",
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     overflow: "hidden",
   },
@@ -142,27 +142,28 @@ const styles = StyleSheet.create({
   inputGlow: {
     flex: 1,
     flexDirection: "row",
-    borderRadius: R.pill,
+    borderRadius: 13,
     padding: 3,
     backgroundColor: C.inputGlow,
   },
-  // the white field itself: borderless inside the glow wrapper
+  // white rounded-rect field: borderless inside the glow wrapper, left text
   inputShell: {
     flex: 1,
-    height: 38,
+    height: 36,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#ffffff",
-    borderRadius: R.pill,
+    borderRadius: 10,
     overflow: "hidden",
   },
   input: {
     flex: 1,
     height: "100%",
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     color: C.inputText,
     fontSize: 14,
     fontFamily: F.semibold,
+    textAlign: "left",
   },
   send: {
     width: 30,

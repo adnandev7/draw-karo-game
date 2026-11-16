@@ -131,6 +131,7 @@ export class Room {
       playerName: "",
       text,
       kind: "system",
+      ts: Date.now(),
     });
     this.trimChat();
   }
@@ -582,6 +583,7 @@ export class Room {
           playerName: player.name,
           text: "guessed the word! 🎉",
           kind: "correct",
+          ts: Date.now(),
         });
         this.trimChat();
         this.toAll("guess:correct", { playerId: senderId, points, guessOrder: this.guessCount });
@@ -623,6 +625,7 @@ export class Room {
       playerName: player?.name ?? "?",
       text,
       kind,
+      ts: Date.now(),
     };
     this.chat.push(entry);
     this.trimChat();

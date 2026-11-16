@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: "#ffffff",
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     padding: 4,
     gap: 2,

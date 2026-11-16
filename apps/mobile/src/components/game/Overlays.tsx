@@ -209,23 +209,31 @@ export function RoundEndOverlay({
 
 export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
   const room = useGame((s) => s.room);
-  const top = podium.slice(0, 3);
   const avatarOf = (id: string) => room?.players.find((p) => p.id === id)?.avatar;
+  const top = podium.slice(0, 3);
+  const rest = podium.slice(3);
+  const winner = top[0];
   const trophy = useWobble();
-  const winnerBounce = useWinnerBounce(!!top[0]);
+  const winnerBounce = useWinnerBounce(!!winner);
 
   // podium order on screen: 2nd, 1st, 3rd — 1st clearly the greatest
   const order = [top[1], top[0], top[2]].filter(Boolean);
   const meta: Record<number, { size: number; blockH: number; color: string }> = {
-    1: { size: 72, blockH: 92, color: C.gold },
-    2: { size: 48, blockH: 62, color: C.silver },
-    3: { size: 42, blockH: 44, color: C.bronze },
+    1: { size: 96, blockH: 112, color: C.gold },
+    2: { size: 62, blockH: 78, color: C.silver },
+    3: { size: 52, blockH: 54, color: C.bronze },
   };
 
   return (
     <Veil>
-      <Animated.Text style={[styles.trophy, { transform: [{ rotate: trophy }] }]}>🏆</Animated.Text>
-      <Text style={styles.heading}>{t.winnerWinner}</Text>
+      <Text style={styles.heading}>
+        {winner ? (
+          <Text style={{ color: C.gold, fontFamily: F.black, fontSize: 26 }}>
+            {winner.name}{" "}
+          </Text>
+        ) : null}
+        {t.winnerIs}
+      </Text>
       <View style={styles.podiumRow}>
         {order.map((e) => {
           const m = meta[e.rank] ?? meta[3];
@@ -244,44 +252,63 @@ export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
             : undefined;
           return (
             <View key={e.playerId} style={styles.podiumCol}>
-              {isWinner ? <Text style={styles.winCrown}>👑</Text> : null}
-              {avatarOf(e.playerId) ? (
-                <Animated.View style={dance}>
-                  <Avatar avatar={avatarOf(e.playerId)!} size={m.size} />
-                </Animated.View>
-              ) : null}
-              <Text style={[styles.podiumName, isWinner && styles.podiumNameWin, { color: m.color }]} numberOfLines={1}>
-                {e.name}
-              </Text>
-              <Text style={[styles.podiumScore, isWinner && styles.podiumScoreWin]}>{e.score}</Text>
+              {/* avatar sits on the block's top edge, crown + trophy flank the winner */}
+              <View style={styles.podiumAvatarRow}>
+                {isWinner ? <Text style={styles.winCrown}>👑</Text> : null}
+                {avatarOf(e.playerId) ? (
+                  <Animated.View style={dance}>
+                    <Avatar avatar={avatarOf(e.playerId)!} size={m.size} />
+                  </Animated.View>
+                ) : null}
+                {isWinner ? (
+                  <Animated.Text style={[styles.winTrophy, { transform: [{ rotate: trophy }] }]}>
+                    🏆
+                  </Animated.Text>
+                ) : null}
+              </View>
               <View
                 style={[
                   styles.podiumBlock,
                   {
                     height: m.blockH,
                     borderTopColor: m.color,
-                    borderLeftColor: shade(m.color, 0.25),
-                    borderRightColor: shade(m.color, 0.25),
+                    borderLeftColor: shade(m.color, 0.3),
+                    borderRightColor: shade(m.color, 0.3),
                     borderTopLeftRadius: isWinner ? 16 : 10,
                     borderTopRightRadius: isWinner ? 16 : 10,
                   },
                 ]}
               >
-                <Text style={[styles.podiumRank, { color: m.color }, isWinner && styles.podiumRankWin]}>
-                  {e.rank}
-                </Text>
+                <Text style={[styles.podiumRank, { color: m.color }]}>#{e.rank}</Text>
+                <View style={styles.podiumMeta}>
+                  <Text style={[styles.podiumName, isWinner && styles.podiumNameWin, { color: m.color }]} numberOfLines={1}>
+                    {e.name}
+                  </Text>
+                  <Text style={[styles.podiumScore, isWinner && styles.podiumScoreWin]}>
+                    {e.score} points
+                  </Text>
+                </View>
               </View>
             </View>
           );
         })}
       </View>
-      {podium.slice(3).length ? (
-        <Text style={styles.subDim}>
-          {podium
-            .slice(3)
-            .map((e) => `${e.rank}. ${e.name}`)
-            .join("  ·  ")}
-        </Text>
+      {rest.length ? (
+        <View style={styles.restRow}>
+          {rest.map((e) => {
+            const av = avatarOf(e.playerId);
+            return (
+              <View key={e.playerId} style={styles.restCol}>
+                <Text style={styles.restRank}>#{e.rank}</Text>
+                {av ? <Avatar avatar={av} size={44} /> : null}
+                <Text style={styles.restName} numberOfLines={1}>
+                  {e.name}
+                </Text>
+                <Text style={styles.restScore}>{e.score} points</Text>
+              </View>
+            );
+          })}
+        </View>
       ) : null}
       <Text style={styles.subDim}>{t.rematchComing}</Text>
     </Veil>
@@ -455,7 +482,7 @@ const styles = StyleSheet.create({
     fontSize: 19,
   },
   choiceTextPressed: { color: C.canvasInk },
-  results: { alignSelf: "stretch", maxWidth: 320, gap: 4, marginTop: 4 },
+  results: { width: "100%", maxWidth: 340, gap: 4, marginTop: 4 },
   resultRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -478,15 +505,30 @@ const styles = StyleSheet.create({
   podiumRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 12,
+    gap: 14,
     marginVertical: 10,
   },
-  podiumCol: { alignItems: "center", width: 104 },
-  winCrown: { fontSize: 26, marginBottom: -18, zIndex: 2 },
+  podiumCol: { alignItems: "center", width: 124 },
+  podiumAvatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: -4,
+    zIndex: 2,
+  },
+  winCrown: {
+    position: "absolute",
+    top: -26,
+    left: -2,
+    fontSize: 30,
+    zIndex: 3,
+    transform: [{ rotate: "-18deg" }],
+  },
+  winTrophy: { fontSize: 42, marginLeft: -8, marginBottom: -6 },
   podiumName: {
     fontFamily: F.xbold,
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 13,
+    textAlign: "center",
   },
   podiumNameWin: { fontSize: 15 },
   podiumScore: {
@@ -494,19 +536,58 @@ const styles = StyleSheet.create({
     fontFamily: F.bold,
     fontSize: 11,
   },
-  podiumScoreWin: { fontSize: 14, color: C.gold },
+  podiumScoreWin: { fontSize: 13, color: "#ffe9c2" },
+  // skribbl's podium block: colored border on 3 sides, open bottom,
+  // rank label top-left, name + points at the bottom inside
   podiumBlock: {
     alignSelf: "stretch",
     borderTopWidth: 5,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    padding: 5,
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
     backgroundColor: "rgba(255,255,255,0.07)",
+    position: "relative",
   },
-  podiumRank: { fontFamily: F.black, fontSize: 15 },
-  podiumRankWin: { fontSize: 20 },
+  podiumRank: {
+    position: "absolute",
+    top: 4,
+    left: 7,
+    fontFamily: F.black,
+    fontSize: 15,
+  },
+  podiumMeta: {
+    position: "absolute",
+    bottom: 9,
+    left: 4,
+    right: 4,
+    alignItems: "center",
+    gap: 1,
+  },
+  // 4th place and beyond: small avatar columns under the podium
+  restRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 16,
+    marginTop: 2,
+  },
+  restCol: { alignItems: "center", width: 84, gap: 1 },
+  restRank: {
+    color: "#d6d6d6",
+    fontFamily: F.black,
+    fontSize: 12,
+    alignSelf: "flex-start",
+  },
+  restName: {
+    color: "#ffffff",
+    fontFamily: F.xbold,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  restScore: {
+    color: "#d6d6d6",
+    fontFamily: F.bold,
+    fontSize: 10,
+  },
   // choosing-a-word screen — heavier veil than the standard overlay
   choosingVeil: {
     position: "absolute",

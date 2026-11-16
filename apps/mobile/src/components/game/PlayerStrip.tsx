@@ -2,26 +2,33 @@
  * PlayerList — skribbl-style player rows (wide screens) or a compact
  * horizontal strip (phones). Guessed players glow green with a ✔ before
  * the avatar, rows read `#N · name · points` centered like skribbl,
- * the drawer gets a wiggling pen, the host wears a crown.
+ * the drawer gets a wiggling pen, the host wears a crown. Recent chat
+ * messages pop up as speech bubbles beside the sender's row.
  */
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import type { Player } from "@drawkaro/shared";
+import type { ChatEntry, Player } from "@drawkaro/shared";
 import { useGame } from "../../store/game";
 import { Avatar } from "../Avatar";
 import { t } from "../../lib/strings";
 import { C, F, R } from "../../lib/theme";
 
+/** How long a sent message keeps showing beside the player's name. */
+const BUBBLE_MS = 6000;
+
 export function PlayerList({
   players,
   drawerId,
   layout,
+  chat,
 }: {
   players: Player[];
   drawerId: string | null;
   layout: "rows" | "strip";
+  chat?: ChatEntry[];
 }) {
   const me = useGame((s) => s.profile);
+  const bubbles = useRecentChats(chat);
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const rankOf = (id: string) => sorted.findIndex((p) => p.id === id) + 1;
 
@@ -52,10 +59,56 @@ export function PlayerList({
           rank={rankOf(p.id)}
           first={i === 0}
           last={i === players.length - 1}
+          bubble={bubbles[p.id]}
         />
       ))}
     </View>
   );
+}
+
+/**
+ * Latest typed message per player, still fresh enough to show as a bubble.
+ * A light 300ms interval re-evaluates liveness; it only re-renders when the
+ * set of visible bubbles actually changes.
+ */
+function useRecentChats(chat: ChatEntry[] | undefined): Record<string, string> {
+  const latest = useMemo(() => {
+    const map: Record<string, { text: string; ts: number }> = {};
+    for (const e of chat ?? []) {
+      if (e.kind !== "chat") continue;
+      map[e.playerId] = { text: e.text, ts: e.ts };
+    }
+    return map;
+  }, [chat]);
+
+  const [live, setLive] = useState<Record<string, string>>({});
+  const liveRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    liveRef.current = live;
+  }, [live]);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const now = Date.now();
+      const out: Record<string, string> = {};
+      for (const [id, v] of Object.entries(latest)) {
+        if (now - v.ts < BUBBLE_MS) out[id] = v.text;
+      }
+      const prev = liveRef.current;
+      const prevKeys = Object.keys(prev);
+      const outKeys = Object.keys(out);
+      if (
+        prevKeys.length === outKeys.length &&
+        outKeys.every((k) => prev[k] === out[k])
+      ) {
+        return;
+      }
+      setLive(out);
+    }, 300);
+    return () => clearInterval(iv);
+  }, [latest]);
+
+  return live;
 }
 
 function useWiggle(active: boolean) {
@@ -85,6 +138,7 @@ function PlayerRow({
   rank,
   first,
   last,
+  bubble,
 }: {
   p: Player;
   me: boolean;
@@ -92,6 +146,7 @@ function PlayerRow({
   rank: number;
   first: boolean;
   last: boolean;
+  bubble?: string;
 }) {
   const wiggle = useWiggle(drawing);
   const bg = p.guessedCurrent
@@ -134,6 +189,15 @@ function PlayerRow({
       {/* ✔ inline before the avatar — no absolute overlap */}
       {p.guessedCurrent ? <Text style={styles.check}>✔</Text> : null}
       <Avatar avatar={p.avatar} size={32} />
+      {/* skribbl's speech bubble beside the row of whoever just typed */}
+      {bubble ? (
+        <View style={styles.bubble} pointerEvents="none">
+          <Text style={styles.bubbleText} numberOfLines={2}>
+            {bubble}
+          </Text>
+          <View style={styles.bubbleTail} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -180,9 +244,10 @@ const styles = StyleSheet.create({
   // vertical rows (skribbl sidebar)
   rowsWrap: {
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
-    overflow: "hidden",
+    // visible: chat bubbles overhang the panel edge onto the canvas
+    overflow: "visible",
   },
   row: {
     flexDirection: "row",
@@ -230,6 +295,35 @@ const styles = StyleSheet.create({
     fontFamily: F.black,
     fontSize: 16,
   },
+  // speech bubble beside whoever just typed (skribbl)
+  bubble: {
+    position: "absolute",
+    left: "58%",
+    top: 7,
+    maxWidth: 150,
+    zIndex: 30,
+  },
+  bubbleText: {
+    color: "#111111",
+    fontFamily: F.semibold,
+    fontSize: 12,
+    backgroundColor: "#ffffff",
+    borderWidth: 2,
+    borderColor: "#e3e3e3",
+    borderRadius: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    overflow: "hidden",
+  },
+  bubbleTail: {
+    position: "absolute",
+    left: -4,
+    top: 10,
+    width: 10,
+    height: 10,
+    backgroundColor: "#ffffff",
+    transform: [{ rotate: "45deg" }],
+  },
 
   // horizontal strip (phones)
   stripRow: {
@@ -243,7 +337,7 @@ const styles = StyleSheet.create({
     gap: 5,
     backgroundColor: "#ffffff",
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     paddingHorizontal: 8,
     paddingVertical: 5,

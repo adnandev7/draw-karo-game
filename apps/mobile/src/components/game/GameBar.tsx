@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: C.panel,
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     height: 52,
     paddingHorizontal: 10,

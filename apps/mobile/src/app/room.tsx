@@ -258,7 +258,7 @@ function LobbyView({
       <Text style={styles.sectionTitle}>
         {t.players} ({room.players.length}/{room.settings.maxPlayers})
       </Text>
-      <PlayerList players={room.players} drawerId={null} layout="rows" />
+      <PlayerList players={room.players} drawerId={null} layout="rows" chat={room.chat} />
       <View style={styles.lobbySideChat}>
         <ChatPanel
           entries={room.chat}
@@ -289,7 +289,7 @@ function LobbyView({
       <Text style={styles.sectionTitle}>
         {t.players} ({room.players.length}/{room.settings.maxPlayers})
       </Text>
-      <PlayerList players={room.players} drawerId={null} layout="strip" />
+      <PlayerList players={room.players} drawerId={null} layout="strip" chat={room.chat} />
       {isHost ? (
         <>
           <Text style={styles.sectionTitle}>{t.settingsHostOnly}</Text>
@@ -404,7 +404,12 @@ function GameView({
   );
 
   const playersBlock = (
-    <PlayerList players={room.players} drawerId={room.drawerId} layout={wide ? "rows" : "strip"} />
+    <PlayerList
+      players={room.players}
+      drawerId={room.drawerId}
+      layout={wide ? "rows" : "strip"}
+      chat={room.chat}
+    />
   );
 
   // skribbl: every non-drawer can react while the drawing is live —
@@ -589,7 +594,7 @@ const styles = StyleSheet.create({
   inviteCard: {
     backgroundColor: C.panel,
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     alignItems: "center",
     padding: 12,
@@ -613,7 +618,7 @@ const styles = StyleSheet.create({
   settingsCard: {
     backgroundColor: C.panel,
     borderRadius: R.m,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     padding: 12,
     gap: 10,
@@ -626,7 +631,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     backgroundColor: "rgba(0,0,0,0.25)",
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
   },
   packChipOn: { backgroundColor: C.green, borderColor: "#2c8a17" },
@@ -652,7 +657,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: "rgba(0,0,0,0.25)",
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     alignItems: "center",
     justifyContent: "center",
@@ -691,7 +696,7 @@ const styles = StyleSheet.create({
   reactionRow: { flexDirection: "row", justifyContent: "center", gap: 8 },
   reactionBtn: {
     backgroundColor: C.panel,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: C.panelBorder,
     borderRadius: R.pill,
     width: 40,
