@@ -39,6 +39,8 @@ export type Profile = { profileId: string; name: string; avatar: AvatarDescripto
 type RoomPlayer = Player & {
   lastGuessTimes: number[];
   turnPoints: number;
+  /** Order of correct guess this turn: 1 = first, 0 = not guessed yet. */
+  guessOrder: number;
   disconnectTimer: NodeJS.Timeout | null;
 };
 
@@ -117,6 +119,15 @@ export class Room {
 
   private later(delayMs: number, fn: () => void): void {
     this.timers.push(setTimeout(fn, delayMs));
+  }
+
+  /** Idle phases (turnEnd/roundEnd/gameEnd) tick once a second so every
+   * client can show a live "next round in Ns" countdown instead of a dead
+   * clock — the gap is announced, never silent. */
+  private startIdleTicker(ms: number): void {
+    this.phaseEndsAt = now() + ms;
+    const ticker = setInterval(() => this.broadcastState(), 1_000);
+    this.timers.push(ticker as unknown as NodeJS.Timeout);
   }
 
   private clearTimers(): void {
@@ -235,6 +246,7 @@ export class Room {
       guessedCurrent: false,
       lastGuessTimes: [],
       turnPoints: 0,
+      guessOrder: 0,
       disconnectTimer: null,
     };
     // First player (re)joins → becomes host
@@ -356,6 +368,7 @@ export class Room {
     for (const p of this.players.values()) {
       p.score = 0;
       p.turnPoints = 0;
+      p.guessOrder = 0;
     }
     this.usedWords = new Set();
     this.round = 1;
@@ -465,6 +478,7 @@ export class Room {
     for (const p of this.players.values()) {
       p.guessedCurrent = false;
       p.turnPoints = 0;
+      p.guessOrder = 0;
     }
     this.phase = "drawing";
     const totalMs = this.settings.drawTimeSec * 1000;
@@ -596,6 +610,7 @@ export class Room {
         player.score += points;
         player.turnPoints += points;
         player.guessedCurrent = true;
+        player.guessOrder = this.guessCount;
         this.chat.push({
           id: `c-${now()}-${Math.random().toString(36).slice(2, 6)}`,
           playerId: senderId,
@@ -709,9 +724,11 @@ export class Room {
         playerId: id,
         pointsEarned: p.turnPoints,
         guessed: p.guessedCurrent,
-        guessOrder: p.guessedCurrent ? 1 : 0,
+        guessOrder: p.guessOrder,
       });
     }
+    // skribbl shows the turn-end table sorted by points earned, high → low
+    results.sort((a, b) => b.pointsEarned - a.pointsEarned || a.guessOrder - b.guessOrder);
 
     const payload: TurnEndPayload = {
       word: this.word?.word ?? "",
@@ -719,7 +736,7 @@ export class Room {
       results,
     };
     this.phase = "turnEnd";
-    this.phaseEndsAt = 0;
+    this.startIdleTicker(TURN_END_MS);
     this.toAll("turn:end", payload);
     this.broadcastState();
     this.later(TURN_END_MS, () => this.afterTurnEnd());
@@ -734,7 +751,7 @@ export class Room {
   private endRound(): void {
     this.clearTimers();
     this.phase = "roundEnd";
-    this.phaseEndsAt = 0;
+    this.startIdleTicker(ROUND_END_MS);
     this.toAll("round:end", { round: this.round, leaderboard: this.leaderboard() });
     this.broadcastState();
 
@@ -752,7 +769,7 @@ export class Room {
   private endGame(): void {
     this.clearTimers();
     this.phase = "gameEnd";
-    this.phaseEndsAt = 0;
+    this.startIdleTicker(GAME_END_MS);
     this.toAll("game:end", { podium: this.leaderboard(), badges: [] });
     this.broadcastState();
     this.later(GAME_END_MS, () => {

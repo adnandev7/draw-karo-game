@@ -2,8 +2,8 @@
  * Chat + guess panel — skribbl-style light chat: alternating rows,
  * green rows for correct guesses, system lines in dim italic.
  */
-import { useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
+import { FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ChatEntry } from "@drawkaro/shared";
 import { t } from "../../lib/strings";
 import { C, F, R } from "../../lib/theme";
@@ -16,11 +16,16 @@ type Props = {
   isDrawer: boolean;
   guessedCurrent: boolean;
   onSubmit: (text: string) => void;
+  /** "So close! Keep guessing" pill — shown in the chat area like skribbl. */
+  closeHint?: string | null;
+  /** Changes each turn/round — refocuses the field so typing lands instantly. */
+  focusKey?: string;
 };
 
-export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props) {
+export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHint, focusKey }: Props) {
   const [text, setText] = useState("");
   const listRef = useRef<FlatList<ChatEntry>>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   // the guess toast shows once when you guess right, then chat comes back —
   // guessed players can keep chatting (server routes their messages as chat)
@@ -37,6 +42,15 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
       clearTimeout(hide);
     };
   }, [guessedCurrent]);
+
+  // Web only: keep the cursor in the guess field so typed keys land in it
+  // without clicking first (a fresh turn/round refocuses after the overlay).
+  // Native skips this — auto-focus would pop the keyboard over the canvas.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const id = setTimeout(() => inputRef.current?.focus(), 60);
+    return () => clearTimeout(id);
+  }, [focusKey]);
 
   const submit = () => {
     const t2 = text.trim();
@@ -89,10 +103,16 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit }: Props
           <Text style={styles.guessedText}>{t.youGuessed}</Text>
         </View>
       ) : null}
+      {closeHint ? (
+        <View style={styles.closeHint}>
+          <Text style={styles.closeHintText}>{closeHint}</Text>
+        </View>
+      ) : null}
       <View style={styles.inputRow}>
         <View style={styles.inputGlow}>
           <View style={styles.inputShell}>
             <TextInput
+              ref={inputRef}
               style={styles.input}
               value={text}
               onChangeText={setText}
@@ -206,4 +226,13 @@ const styles = StyleSheet.create({
     fontFamily: F.xbold,
     fontSize: 13,
   },
+  closeHint: {
+    backgroundColor: "rgba(226, 203, 0, 0.95)",
+    marginHorizontal: 6,
+    marginTop: 6,
+    borderRadius: R.pill,
+    paddingVertical: 5,
+    alignItems: "center",
+  },
+  closeHintText: { color: "#111111", fontFamily: F.xbold, fontSize: 12 },
 });

@@ -37,7 +37,7 @@ export function WordChoiceOverlay({ words, seconds }: { words: string[]; seconds
  * round clock, funkified: chunky dark rim, bells on top, little feet,
  * and a fast squash-pulse that speeds up when time is running out.
  */
-function FunkyClock({ seconds }: { seconds: number }) {
+function FunkyClock({ seconds, label }: { seconds: number; label?: string }) {
   const urgent = seconds <= 5;
   const pulse = useClockPulse(urgent ? 450 : 900);
   const wobble = useClockWobble();
@@ -63,7 +63,7 @@ function FunkyClock({ seconds }: { seconds: number }) {
         <View style={[styles.foot, styles.footL]} />
         <View style={[styles.foot, styles.footR]} />
       </Animated.View>
-      <Text style={styles.pickFast}>{t.pickFast}</Text>
+      <Text style={styles.pickFast}>{label ?? t.pickFast}</Text>
     </View>
   );
 }
@@ -149,36 +149,130 @@ function Chevrons({ dir, wiggle }: { dir: "left" | "right"; wiggle: Animated.Val
   );
 }
 
+/**
+ * Staggered entrance row — skribbl's turn-end motion: each row slides in
+ * from the left and settles with a springy overshoot, one after another.
+ */
+function StaggerRow({ index, children }: { index: number; children: React.ReactNode }) {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    val.setValue(0);
+    const anim = Animated.timing(val, {
+      toValue: 1,
+      duration: 460,
+      delay: 180 + index * 95,
+      easing: Easing.out(Easing.back(1.7)),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [val, index]);
+  return (
+    <Animated.View
+      style={{
+        opacity: val.interpolate({ inputRange: [0, 0.35], outputRange: [0, 1] }),
+        transform: [
+          { translateX: val.interpolate({ inputRange: [0, 1], outputRange: [-90, 0] }) },
+          { translateY: val.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Podium column rise — springs up from below the veil, staggered by rank. */
+function RiseIn({ index, children }: { index: number; children: React.ReactNode }) {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    val.setValue(0);
+    const anim = Animated.timing(val, {
+      toValue: 1,
+      duration: 560,
+      delay: 160 + index * 130,
+      easing: Easing.out(Easing.back(1.5)),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [val, index]);
+  return (
+    <Animated.View
+      style={{
+        opacity: val.interpolate({ inputRange: [0, 0.3], outputRange: [0, 1] }),
+        transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [150, 0] }) }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Springy pop-in for a heading — squash up from nothing with overshoot. */function PopIn({ children }: { children: React.ReactNode }) {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    val.setValue(0);
+    const anim = Animated.timing(val, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.out(Easing.back(2.2)),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [val]);
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale: val.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }) }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export function TurnEndOverlay({
   word,
   drawerId,
   results,
+  seconds,
 }: {
   word: string;
   drawerId: string;
   results: TurnResultEntry[];
+  seconds: number;
 }) {
   const room = useGame((s) => s.room);
   const nameOf = (id: string) => room?.players.find((p) => p.id === id)?.name ?? "someone";
+  // defensive client-side sort: highest points on top, skribbl-style
+  const sorted = [...results].sort(
+    (a, b) => b.pointsEarned - a.pointsEarned || a.guessOrder - b.guessOrder
+  );
   return (
     <Veil>
       <Text style={styles.sub}>{t.theWordWas}</Text>
-      <Text style={styles.bigWord}>{word}</Text>
+      <PopIn>
+        <Text style={styles.bigWord}>{word}</Text>
+      </PopIn>
       <Text style={styles.subDim}>{t.drawnBy(nameOf(drawerId))}</Text>
       <View style={styles.results}>
-        {results.map((r) => {
+        {sorted.map((r, i) => {
           const p = room?.players.find((pl) => pl.id === r.playerId);
           return (
-            <View key={r.playerId} style={styles.resultRow}>
-              <Text style={styles.resultName}>{p?.name ?? "?"}</Text>
-              <Text style={[styles.resultPoints, r.pointsEarned <= 0 && styles.resultZero]}>
-                {r.pointsEarned > 0 ? `+${r.pointsEarned}` : "0"}
-              </Text>
-            </View>
+            <StaggerRow key={r.playerId} index={i}>
+              <View style={styles.resultRow}>
+                <Text style={styles.resultName}>{p?.name ?? "?"}</Text>
+                <Text style={[styles.resultPoints, r.pointsEarned <= 0 && styles.resultZero]}>
+                  {r.pointsEarned > 0 ? `+${r.pointsEarned}` : "0"}
+                </Text>
+              </View>
+            </StaggerRow>
           );
         })}
       </View>
-      <Text style={styles.subDim}>{t.nextTurnComing}</Text>
+      <FunkyClock seconds={seconds} label={seconds > 0 ? t.nextTurnIn(seconds) : t.nextTurnComing} />
     </Veil>
   );
 }
@@ -186,28 +280,65 @@ export function TurnEndOverlay({
 export function RoundEndOverlay({
   round,
   leaderboard,
+  seconds,
 }: {
   round: number;
   leaderboard: LeaderboardEntry[];
+  seconds: number;
 }) {
+  const wobble = useRoundWobble();
   return (
     <Veil>
-      <Text style={styles.heading}>{t.roundDone(round)}</Text>
+      <PopIn>
+        <Animated.View
+          style={{
+            transform: [
+              { rotate: wobble },
+              { scale: 1.12 },
+            ],
+          }}
+        >
+          <Text style={styles.roundDone}>{t.roundDone(round)}</Text>
+        </Animated.View>
+      </PopIn>
       <View style={styles.results}>
-        {leaderboard.map((e) => (
-          <View key={e.playerId} style={styles.resultRow}>
-            <Text style={styles.resultName}>
-              {medal(e.rank)} {e.name}
-            </Text>
-            <Text style={styles.resultPoints}>{e.score}</Text>
-          </View>
+        {leaderboard.map((e, i) => (
+          <StaggerRow key={e.playerId} index={i}>
+            <View style={styles.resultRow}>
+              <Text style={styles.resultName}>
+                {medal(e.rank)} {e.name}
+              </Text>
+              <Text style={styles.resultPoints}>{e.score}</Text>
+            </View>
+          </StaggerRow>
         ))}
       </View>
+      <FunkyClock
+        seconds={seconds}
+        label={seconds > 0 ? t.nextRoundIn(seconds) : t.nextTurnComing}
+      />
     </Veil>
   );
 }
 
-export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
+/** Fast excited wobble for the "Round done!" banner. */
+function useRoundWobble() {
+  const val = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(val, { toValue: 1, duration: 160, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(val, { toValue: -1, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(val, { toValue: 0, duration: 160, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [val]);
+  return val.interpolate({ inputRange: [-1, 1], outputRange: ["-5deg", "5deg"] });
+}
+
+export function GameEndOverlay({ podium, seconds }: { podium: LeaderboardEntry[]; seconds: number }) {
   const room = useGame((s) => s.room);
   const avatarOf = (id: string) => room?.players.find((p) => p.id === id)?.avatar;
   const top = podium.slice(0, 3);
@@ -215,7 +346,6 @@ export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
   const winner = top[0];
   const trophy = useWobble();
   const winnerBounce = useWinnerBounce(!!winner);
-
   // podium order on screen: 2nd, 1st, 3rd — 1st clearly the greatest
   const order = [top[1], top[0], top[2]].filter(Boolean);
   const meta: Record<number, { size: number; blockH: number; color: string }> = {
@@ -251,45 +381,47 @@ export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
               }
             : undefined;
           return (
-            <View key={e.playerId} style={styles.podiumCol}>
-              {/* avatar sits on the block's top edge, crown + trophy flank the winner */}
-              <View style={styles.podiumAvatarRow}>
-                {isWinner ? <Text style={styles.winCrown}>👑</Text> : null}
-                {avatarOf(e.playerId) ? (
-                  <Animated.View style={dance}>
-                    <Avatar avatar={avatarOf(e.playerId)!} size={m.size} />
-                  </Animated.View>
-                ) : null}
-                {isWinner ? (
-                  <Animated.Text style={[styles.winTrophy, { transform: [{ rotate: trophy }] }]}>
-                    🏆
-                  </Animated.Text>
-                ) : null}
-              </View>
-              <View
-                style={[
-                  styles.podiumBlock,
-                  {
-                    height: m.blockH,
-                    borderTopColor: m.color,
-                    borderLeftColor: shade(m.color, 0.3),
-                    borderRightColor: shade(m.color, 0.3),
-                    borderTopLeftRadius: isWinner ? 16 : 10,
-                    borderTopRightRadius: isWinner ? 16 : 10,
-                  },
-                ]}
-              >
-                <Text style={[styles.podiumRank, { color: m.color }]}>#{e.rank}</Text>
-                <View style={styles.podiumMeta}>
-                  <Text style={[styles.podiumName, isWinner && styles.podiumNameWin, { color: m.color }]} numberOfLines={1}>
-                    {e.name}
-                  </Text>
-                  <Text style={[styles.podiumScore, isWinner && styles.podiumScoreWin]}>
-                    {e.score} points
-                  </Text>
+            <RiseIn key={e.playerId} index={e.rank - 1}>
+              <View style={styles.podiumCol}>
+                {/* avatar sits on the block's top edge, crown + trophy flank the winner */}
+                <View style={styles.podiumAvatarRow}>
+                  {isWinner ? <Text style={styles.winCrown}>👑</Text> : null}
+                  {avatarOf(e.playerId) ? (
+                    <Animated.View style={dance}>
+                      <Avatar avatar={avatarOf(e.playerId)!} size={m.size} />
+                    </Animated.View>
+                  ) : null}
+                  {isWinner ? (
+                    <Animated.Text style={[styles.winTrophy, { transform: [{ rotate: trophy }] }]}>
+                      🏆
+                    </Animated.Text>
+                  ) : null}
+                </View>
+                <View
+                  style={[
+                    styles.podiumBlock,
+                    {
+                      height: m.blockH,
+                      borderTopColor: m.color,
+                      borderLeftColor: shade(m.color, 0.3),
+                      borderRightColor: shade(m.color, 0.3),
+                      borderTopLeftRadius: isWinner ? 16 : 10,
+                      borderTopRightRadius: isWinner ? 16 : 10,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.podiumRank, { color: m.color }]}>#{e.rank}</Text>
+                  <View style={styles.podiumMeta}>
+                    <Text style={[styles.podiumName, isWinner && styles.podiumNameWin, { color: m.color }]} numberOfLines={1}>
+                      {e.name}
+                    </Text>
+                    <Text style={[styles.podiumScore, isWinner && styles.podiumScoreWin]}>
+                      {e.score} points
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            </RiseIn>
           );
         })}
       </View>
@@ -310,7 +442,10 @@ export function GameEndOverlay({ podium }: { podium: LeaderboardEntry[] }) {
           })}
         </View>
       ) : null}
-      <Text style={styles.subDim}>{t.rematchComing}</Text>
+      <FunkyClock
+        seconds={seconds}
+        label={seconds > 0 ? t.rematchSoon(seconds) : t.rematchComing}
+      />
     </Veil>
   );
 }
@@ -458,6 +593,15 @@ const styles = StyleSheet.create({
     fontFamily: F.black,
     fontSize: 30,
     textAlign: "center",
+  },
+  roundDone: {
+    color: "#ffd83d",
+    fontFamily: F.black,
+    fontSize: 28,
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 0,
   },
   choiceRowWrap: {
     flexDirection: "row",

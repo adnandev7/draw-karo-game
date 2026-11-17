@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "../lib/strings";
 import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
@@ -42,6 +43,14 @@ export default function HomeScreen() {
   // whoever's profile is saved in this browser.
   const [code, setCode] = useState(linkCode);
   const [joinMode, setJoinMode] = useState(!!linkCode);
+  // clear space for system gesture bars / notches / notification panels
+  const insets = useSafeAreaInsets();
+  const safePad = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  };
   /** Set only when the user just tapped create/join — never by a stale room. */
   const enteringRef = useRef(false);
 
@@ -94,7 +103,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, safePad]}>
       <HomeBackdrop />
 
       {/* logo */}

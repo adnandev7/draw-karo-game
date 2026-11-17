@@ -103,8 +103,10 @@ export type ServerToClientEvents = {
 // ─── Scoring (skribbl-faithful) ──────────────────────────────────────────────
 
 /**
- * Guesser points: speed-based, first guesser gets the most.
- * Formula: round(100 * timeRemainingRatio) + 50, scaled down by hint penalty.
+ * Guesser points: speed-based, first guesser gets the most (skribbl-faithful).
+ * Formula: round(250 * timeRemainingRatio) + 50, scaled down by hint penalty.
+ * Max 300 — the fastest guesser on an unhinted word out-scores everyone,
+ * including the drawer.
  */
 export function guesserPoints(opts: {
   timeRemainingMs: number;
@@ -113,16 +115,18 @@ export function guesserPoints(opts: {
 }): number {
   const ratio = Math.max(0, Math.min(1, opts.timeRemainingMs / opts.totalTimeMs));
   const hintPenalty = Math.min(0.5, opts.hintsRevealed * 0.25);
-  return Math.round(100 * ratio * (1 - hintPenalty)) + 50;
+  return Math.round(250 * ratio * (1 - hintPenalty)) + 50;
 }
 
 /**
  * Drawer points: scaled by how many players guessed correctly.
- * Formula: round(400 / guessers) * correctGuessers.
+ * Formula: round(250 / guessers) * correctGuessers — max 250, so a great
+ * drawer is rewarded but never beats the fastest guesser (skribbl keeps the
+ * crown with the guessers; the drawer earns a solid assist bonus).
  */
 export function drawerPoints(correctGuessers: number, numberOfGuessers: number): number {
   if (numberOfGuessers <= 0) return 0;
-  return Math.round((400 / numberOfGuessers) * correctGuessers);
+  return Math.round((250 / numberOfGuessers) * correctGuessers);
 }
 
 // ─── Guess matching ──────────────────────────────────────────────────────────

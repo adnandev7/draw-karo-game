@@ -28,7 +28,9 @@ export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting
     <View style={styles.bar}>
       <View style={styles.side}>
         <View style={[styles.clock, urgent && styles.clockUrgent, { transform: [{ scale: pulse }] }]}>
-          <Text style={styles.clockText}>{waiting ? "·" : Math.max(0, seconds)}</Text>
+          <Text style={styles.clockText}>
+            {waiting && seconds <= 0 ? "·" : Math.max(0, seconds)}
+          </Text>
         </View>
         <Text style={styles.round} numberOfLines={1}>
           {t.roundOf(round, total)}

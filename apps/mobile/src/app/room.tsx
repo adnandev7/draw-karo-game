@@ -19,6 +19,7 @@ import {
 import { useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "../lib/strings";
 import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
@@ -103,6 +104,9 @@ export default function RoomScreen() {
   }, [room, router]);
 
   const wide = width >= WIDE;
+  // clear space for system gesture bars / notches / notification panels so
+  // they never overlap our UI (zero on web — browsers don't need it)
+  const insets = useSafeAreaInsets();
   // clamp column widths to the viewport so nothing can overflow
   const sideW = Math.min(280, Math.max(190, Math.round(width * 0.21)));
   const chatW = Math.min(340, Math.max(230, Math.round(width * 0.25)));
@@ -114,7 +118,15 @@ export default function RoomScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <GameBackdrop />
@@ -135,12 +147,23 @@ export default function RoomScreen() {
         />
       ) : null}
       {room.phase === "turnEnd" && turnEnd ? (
-        <TurnEndOverlay word={turnEnd.word} drawerId={turnEnd.drawerId} results={turnEnd.results} />
+        <TurnEndOverlay
+          word={turnEnd.word}
+          drawerId={turnEnd.drawerId}
+          results={turnEnd.results}
+          seconds={Math.ceil(room.timeLeftMs / 1000)}
+        />
       ) : null}
       {room.phase === "roundEnd" && roundEnd ? (
-        <RoundEndOverlay round={roundEnd.round} leaderboard={roundEnd.leaderboard} />
+        <RoundEndOverlay
+          round={roundEnd.round}
+          leaderboard={roundEnd.leaderboard}
+          seconds={Math.ceil(room.timeLeftMs / 1000)}
+        />
       ) : null}
-      {room.phase === "gameEnd" && gameEnd ? <GameEndOverlay podium={gameEnd.podium} /> : null}
+      {room.phase === "gameEnd" && gameEnd ? (
+        <GameEndOverlay podium={gameEnd.podium} seconds={Math.ceil(room.timeLeftMs / 1000)} />
+      ) : null}
 
       {errorMsg ? (
         <View style={styles.errorToast}>
@@ -357,7 +380,7 @@ function GameView({
     [room.players, profile.profileId]
   );
   const seconds = Math.ceil(room.timeLeftMs / 1000);
-  const waiting = room.phase === "turnEnd" || room.phase === "roundEnd";
+  const waiting = room.phase === "turnEnd" || room.phase === "roundEnd" || room.phase === "gameEnd";
 
   const gameBar = (
     <GameBar
@@ -394,11 +417,6 @@ function GameView({
 
   const canvasBlock = (
     <View style={styles.canvasBlock}>
-      {closeHint ? (
-        <View style={styles.closeHint}>
-          <Text style={styles.closeHintText}>{closeHint}</Text>
-        </View>
-      ) : null}
       <View style={styles.canvasCard}>
         <DrawCanvasLazy
           isDrawer={isDrawer}
@@ -460,6 +478,8 @@ function GameView({
               isDrawer={isDrawer}
               guessedCurrent={me?.guessedCurrent ?? false}
               onSubmit={sendGuess}
+              closeHint={closeHint}
+              focusKey={`${room.round}:${room.turn}`}
             />
           </View>
         </View>
@@ -479,6 +499,8 @@ function GameView({
           isDrawer={isDrawer}
           guessedCurrent={me?.guessedCurrent ?? false}
           onSubmit={sendGuess}
+          closeHint={closeHint}
+          focusKey={`${room.round}:${room.turn}`}
         />
       </View>
       <LeaveButton floating />
@@ -680,14 +702,6 @@ const styles = StyleSheet.create({
     borderRadius: R.m,
     overflow: "hidden",
   },
-  closeHint: {
-    alignSelf: "center",
-    backgroundColor: "rgba(226, 203, 0, 0.95)",
-    borderRadius: R.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-  },
-  closeHintText: { color: "#111111", fontFamily: F.xbold, fontSize: 12 },
   reactionRow: { flexDirection: "row", justifyContent: "center", gap: 8 },
   reactionBtn: {
     backgroundColor: C.panel,

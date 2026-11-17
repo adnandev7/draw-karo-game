@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { Stack, DefaultTheme, ThemeProvider } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   useFonts,
   Nunito_400Regular,
@@ -53,19 +54,21 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={DefaultTheme}>
-        {ready ? (
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="room" />
-          </Stack>
-        ) : (
-          <View style={styles.splash}>
-            <ActivityIndicator size="large" color="#53e237" />
-            <Text style={styles.splashText}>Draw Karo</Text>
-          </View>
-        )}
-      </ThemeProvider>
+      <SafeAreaProvider>
+        <ThemeProvider value={DefaultTheme}>
+          {ready ? (
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="room" />
+            </Stack>
+          ) : (
+            <View style={styles.splash}>
+              <ActivityIndicator size="large" color="#53e237" />
+              <Text style={styles.splashText}>Draw Karo</Text>
+            </View>
+          )}
+        </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
