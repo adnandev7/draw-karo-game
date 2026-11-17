@@ -391,6 +391,7 @@ function GameView({
       myWord={myWord}
       mask={room.wordMask}
       waiting={waiting}
+      narrow={!wide}
     />
   );
 

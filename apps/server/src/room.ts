@@ -41,6 +41,9 @@ type RoomPlayer = Player & {
   turnPoints: number;
   /** Order of correct guess this turn: 1 = first, 0 = not guessed yet. */
   guessOrder: number;
+  /** Score as it stood when the current turn started — clients see this
+   * during the turn so nobody's points reveal before the turn ends. */
+  turnStartScore: number;
   disconnectTimer: NodeJS.Timeout | null;
 };
 
@@ -167,13 +170,15 @@ export class Room {
   }
 
   private state(): RoomState {
+    const hideScores = this.phase === "drawing";
     return {
       code: this.code,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
         avatar: p.avatar,
-        score: p.score,
+        // mid-turn nobody sees points move — scores reveal at turn end
+        score: hideScores ? p.turnStartScore : p.score,
         isHost: p.isHost,
         connected: p.connected,
         guessedCurrent: p.guessedCurrent,
@@ -197,8 +202,24 @@ export class Room {
   // ─── Join / leave ──────────────────────────────────────────────────────────
 
   join(socket: GameSocket, profile: Profile, asHost: boolean): RoomOpResult {
+    // Same person, fresh session (closed the tab → new profileId): adopt the
+    // stale disconnected seat with the same name — keeps their score/host
+    // status and never leaves a ghost duplicate row with a different avatar.
+    let adopted: { score: number; isHost: boolean } | null = null;
+    const nameKey = profile.name.trim().toLowerCase();
+    for (const [id, p] of [...this.players]) {
+      if (id !== profile.profileId && !p.connected && p.name.trim().toLowerCase() === nameKey) {
+        adopted = { score: p.score, isHost: p.isHost };
+        this.finalizeRemoval(id);
+      }
+    }
+    if (adopted?.isHost) {
+      // finalizeRemoval may have transferred the crown — it belongs to us
+      for (const p of this.players.values()) p.isHost = false;
+    }
+
     if (this.players.size >= this.settings.maxPlayers) return { ok: false, error: "Room is full" };
-    if (this.phase !== "lobby" && !this.players.has(profile.profileId)) {
+    if (this.phase !== "lobby" && !this.players.has(profile.profileId) && !adopted) {
       return { ok: false, error: "Game already in progress — ask the host to wait" };
     }
 
@@ -240,13 +261,14 @@ export class Room {
       id: profile.profileId,
       name: profile.name,
       avatar: profile.avatar,
-      score: 0,
-      isHost: asHost,
+      score: adopted?.score ?? 0,
+      isHost: asHost || (adopted?.isHost ?? false),
       connected: true,
       guessedCurrent: false,
       lastGuessTimes: [],
       turnPoints: 0,
       guessOrder: 0,
+      turnStartScore: adopted?.score ?? 0,
       disconnectTimer: null,
     };
     // First player (re)joins → becomes host
@@ -479,6 +501,7 @@ export class Room {
       p.guessedCurrent = false;
       p.turnPoints = 0;
       p.guessOrder = 0;
+      p.turnStartScore = p.score;
     }
     this.phase = "drawing";
     const totalMs = this.settings.drawTimeSec * 1000;

@@ -46,7 +46,9 @@ type Props = {
 
 export function Avatar({ avatar, size, pop = 0, eyesBounce = 0, mouthBounce = 0 }: Props) {
   const color = avatar.skinTone;
-  const outline = Math.max(2, size * 0.05);
+  // scales with size — a fixed 2px floor made small list rows chunky and
+  // distorted the face (the floor is only a safety net for tiny renders)
+  const outline = Math.max(1.2, size * 0.05);
   const whole = usePulse(pop, (v) => [
     { transform: [{ scale: v.interpolate({ inputRange: [0, 0.15, 1], outputRange: [1, 1.2, 1] }) }] },
   ]);
@@ -158,7 +160,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
         top: eyeY + dot * 0.4,
         left: x - dot * 0.2,
         width: dot * 1.4,
-        height: Math.max(2, hw * 0.06),
+        height: Math.max(1.2, hw * 0.06),
         borderRadius: size,
         backgroundColor: dark,
       }}
@@ -199,7 +201,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
             height: dot * 1.6,
             borderRadius: size,
             backgroundColor: "#ffffff",
-            borderWidth: Math.max(2, hw * 0.05),
+            borderWidth: Math.max(1.2, hw * 0.05),
             borderColor: dark,
             alignItems: "center",
             justifyContent: "center",
@@ -224,7 +226,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
               position: "absolute",
               top: dot * 0.5,
               width: dot * 1.2,
-              height: Math.max(2, hw * 0.06),
+              height: Math.max(1.2, hw * 0.06),
               backgroundColor: dark,
               borderRadius: size,
               transform: [{ rotate: i === 0 ? "30deg" : "-30deg" }, { translateY: i === 0 ? -dot * 0.3 : dot * 0.3 }],
@@ -235,7 +237,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
               position: "absolute",
               top: dot * 0.5,
               width: dot * 1.2,
-              height: Math.max(2, hw * 0.06),
+              height: Math.max(1.2, hw * 0.06),
               backgroundColor: dark,
               borderRadius: size,
               transform: [{ rotate: i === 0 ? "-30deg" : "30deg" }, { translateY: i === 0 ? dot * 0.3 : -dot * 0.3 }],
@@ -253,7 +255,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
                 width: dot * 1.9,
                 height: dot * 1.9,
                 borderRadius: hw * 0.09,
-                borderWidth: Math.max(2, hw * 0.07),
+                borderWidth: Math.max(1.2, hw * 0.07),
                 borderColor: dark,
                 backgroundColor: "rgba(255,255,255,0.35)",
                 alignItems: "center",
@@ -283,7 +285,7 @@ function Eyes({ id, size }: { id: string; size: number }) {
                 top: eyeY - dot * 0.75,
                 left: x - dot * 0.15,
                 width: dot * 1.3,
-                height: Math.max(2, hw * 0.07),
+                height: Math.max(1.2, hw * 0.07),
                 borderRadius: size,
                 backgroundColor: dark,
                 transform: [{ rotate: i === 0 ? "-22deg" : "22deg" }],
@@ -363,7 +365,7 @@ function Mouth({ id, size }: { id: string; size: number }) {
               key={i}
               style={{
                 width: hw * 0.19,
-                height: Math.max(2, hw * 0.07),
+                height: Math.max(1.2, hw * 0.07),
                 borderRadius: size,
                 backgroundColor: dark,
                 transform: [{ rotate: `${deg}deg` }],
@@ -395,7 +397,7 @@ function Mouth({ id, size }: { id: string; size: number }) {
             top: top + hw * 0.06,
             left: cx - hw * 0.18,
             width: hw * 0.36,
-            height: Math.max(2, hw * 0.06),
+            height: Math.max(1.2, hw * 0.06),
             borderRadius: size,
             backgroundColor: dark,
           }}
@@ -413,8 +415,8 @@ function Mouth({ id, size }: { id: string; size: number }) {
             backgroundColor: dark,
             borderTopLeftRadius: hw * 0.14,
             borderTopRightRadius: hw * 0.14,
-            borderBottomLeftRadius: 2,
-            borderBottomRightRadius: 2,
+            borderBottomLeftRadius: Math.max(1.2, hw * 0.04),
+            borderBottomRightRadius: Math.max(1.2, hw * 0.04),
             transform: [{ rotate: "180deg" }],
           }}
         />

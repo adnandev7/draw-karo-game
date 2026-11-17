@@ -294,11 +294,13 @@ socket.on("guess:close", (hint) => {
 socket.on("guess:correct", (p) => {
   const room = useGame.getState().room;
   if (!room) return;
+  // guessed row turns green with a ✔, but the points stay hidden until the
+  // server reveals everyone's scores at turn end (skribbl behaviour)
   useGame.setState({
     room: {
       ...room,
       players: room.players.map((pl) =>
-        pl.id === p.playerId ? { ...pl, guessedCurrent: true, score: pl.score + p.points } : pl
+        pl.id === p.playerId ? { ...pl, guessedCurrent: true } : pl
       ),
     },
   });

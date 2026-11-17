@@ -18,9 +18,11 @@ type Props = {
   /** Underscore mask shown to guessers. */
   mask: string;
   waiting?: boolean;
+  /** Phone-width layout: the hint shares the row instead of floating over it. */
+  narrow?: boolean;
 };
 
-export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting }: Props) {
+export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting, narrow }: Props) {
   const urgent = seconds <= 10 && !waiting;
   const pulse = usePulse(urgent);
 
@@ -32,30 +34,33 @@ export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting
             {waiting && seconds <= 0 ? "·" : Math.max(0, seconds)}
           </Text>
         </View>
-        <Text style={styles.round} numberOfLines={1}>
-          {t.roundOf(round, total)}
+        <Text style={[styles.round, narrow && styles.roundNarrow]} numberOfLines={1}>
+          {narrow ? t.roundLabel(round, total) : t.roundOf(round, total)}
         </Text>
       </View>
 
-      {/* absolutely centered hint so the clock/round can never push it off */}
-      <View style={styles.center}>
+      {/* wide: absolutely centered hint so the clock/round can never push it
+          off · narrow: a real flex child so the mask can never overflow */}
+      <View style={narrow ? styles.centerFlex : styles.center}>
         {waiting ? (
           <Text style={styles.hintLabel}>{isDrawer ? t.yourTurnNext : t.waitingNext}</Text>
         ) : isDrawer && myWord ? (
           <>
             <Text style={styles.hintLabel}>{t.drawThis}</Text>
-            <Text style={[styles.word, styles.drawerWord]}>{myWord}</Text>
+            <Text style={[styles.word, styles.drawerWord, narrow && styles.wordNarrow]} numberOfLines={1}>
+              {myWord}
+            </Text>
           </>
         ) : (
           <>
             <Text style={styles.hintLabel}>{t.guessThis}</Text>
-            <Mask text={mask} />
+            <Mask text={mask} narrow={narrow} />
           </>
         )}
       </View>
 
-      {/* spacer mirrors the left side to keep the center honest */}
-      <View style={[styles.side, styles.sideRight]} />
+      {/* spacer mirrors the left side to keep the wide center honest */}
+      {narrow ? null : <View style={[styles.side, styles.sideRight]} />}
     </View>
   );
 }
@@ -79,16 +84,16 @@ function usePulse(active: boolean) {
   return val;
 }
 
-function Mask({ text }: { text: string }) {
+function Mask({ text, narrow }: { text: string; narrow?: boolean }) {
   return (
-    <View style={styles.maskRow}>
+    <View style={[styles.maskRow, narrow && styles.maskRowNarrow]}>
       {text
         .split("")
         .filter((ch) => ch.trim())
         .map((ch, i) => (
           <Text
             key={i}
-            style={[styles.maskChar, ch === "_" ? styles.maskHidden : styles.maskRevealed]}
+            style={[styles.maskChar, narrow && styles.maskCharNarrow, ch === "_" ? styles.maskHidden : styles.maskRevealed]}
           >
             {ch}
           </Text>
@@ -105,7 +110,8 @@ const styles = StyleSheet.create({
     borderRadius: R.m,
     borderWidth: 1,
     borderColor: C.panelBorder,
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 4,
     paddingHorizontal: 10,
   },
   side: {
@@ -136,6 +142,7 @@ const styles = StyleSheet.create({
     opacity: 0.95,
     maxWidth: 110,
   },
+  roundNarrow: { maxWidth: 74, fontSize: 11 },
   center: {
     position: "absolute",
     top: 0,
@@ -145,6 +152,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
+    zIndex: 1,
+  },
+  // phone width: a real flex child — the hint takes the remaining space and
+  // wraps instead of spilling out of the bar
+  centerFlex: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    paddingHorizontal: 4,
     zIndex: 1,
   },
   hintLabel: {
@@ -158,6 +175,7 @@ const styles = StyleSheet.create({
     fontFamily: F.xbold,
     fontSize: 18,
   },
+  wordNarrow: { fontSize: 15 },
   drawerWord: { color: C.gold },
   maskRow: {
     flexDirection: "row",
@@ -166,11 +184,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 120,
   },
+  maskRowNarrow: { paddingHorizontal: 0 },
   maskChar: {
     fontFamily: F.mono,
     fontSize: 19,
     lineHeight: 22,
   },
+  maskCharNarrow: { fontSize: 14, lineHeight: 17 },
   maskHidden: { color: "#8fa8d8" },
   maskRevealed: { color: "#ffffff", fontWeight: "700" },
 });
