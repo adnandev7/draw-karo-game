@@ -106,14 +106,16 @@ export default function HomeScreen() {
     <View style={[styles.container, safePad]}>
       <HomeBackdrop />
 
-      {/* logo */}
-      <View style={styles.logoZone}>
-        <Logo size={54} />
-        <Text style={styles.tagline}>{t.tagline}</Text>
-      </View>
+      {/* everything between the footer and the top is one centered group */}
+      <View style={styles.main}>
+        {/* logo */}
+        <View style={styles.logoZone}>
+          <Logo size={54} />
+          <Text style={styles.tagline}>{t.tagline}</Text>
+        </View>
 
-      {/* center column */}
-      <View style={styles.column}>
+        {/* center column */}
+        <View style={styles.column}>
         <View style={styles.card}>
           {/* avatar stage — darker inset panel, chunky arrows flank, funky dice top-right */}
           <View style={styles.stage}>
@@ -186,6 +188,7 @@ export default function HomeScreen() {
         </Pressable>
 
         {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+        </View>
       </View>
 
       <Text style={styles.footer}>{t.footer}</Text>
@@ -300,7 +303,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.bg,
     alignItems: "center",
-    paddingTop: 44,
+  },
+  // logo + player card + buttons: one vertically centered group
+  main: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoZone: {
     alignItems: "center",
@@ -429,7 +438,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: F.regular,
     textAlign: "center",
-    marginTop: "auto",
     marginBottom: 20,
   },
 });
