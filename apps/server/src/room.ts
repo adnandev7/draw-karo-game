@@ -773,20 +773,23 @@ export class Room {
 
   private endRound(): void {
     this.clearTimers();
+    // Final round (or almost nobody left): no round follows, so skip the
+    // "Round N done / next round in…" wait and go straight to the final
+    // leaderboard — skribbl jumps from the last turn to the podium.
+    if (this.round >= this.settings.rounds || this.players.size < 2) {
+      this.endGame();
+      return;
+    }
     this.phase = "roundEnd";
     this.startIdleTicker(ROUND_END_MS);
     this.toAll("round:end", { round: this.round, leaderboard: this.leaderboard() });
     this.broadcastState();
 
-    if (this.round < this.settings.rounds && this.players.size >= 2) {
-      this.later(ROUND_END_MS, () => {
-        this.round++;
-        this.turn = 0;
-        this.nextTurn();
-      });
-    } else {
-      this.later(ROUND_END_MS, () => this.endGame());
-    }
+    this.later(ROUND_END_MS, () => {
+      this.round++;
+      this.turn = 0;
+      this.nextTurn();
+    });
   }
 
   private endGame(): void {

@@ -39,9 +39,9 @@ export function GameBar({ round, total, seconds, isDrawer, myWord, mask, waiting
         </Text>
       </View>
 
-      {/* wide: absolutely centered hint so the clock/round can never push it
-          off · narrow: a real flex child so the mask can never overflow */}
-      <View style={narrow ? styles.centerFlex : styles.center}>
+      {/* absolutely centered hint over the whole bar in both layouts — the
+          mask wraps and has no side padding, so it can never spill out */}
+      <View style={styles.center}>
         {waiting ? (
           <Text style={styles.hintLabel}>{isDrawer ? t.yourTurnNext : t.waitingNext}</Text>
         ) : isDrawer && myWord ? (
@@ -152,16 +152,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
-    zIndex: 1,
-  },
-  // phone width: a real flex child — the hint takes the remaining space and
-  // wraps instead of spilling out of the bar
-  centerFlex: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    paddingHorizontal: 4,
     zIndex: 1,
   },
   hintLabel: {
