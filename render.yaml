@@ -1,22 +1,51 @@
-# Render.com blueprint — deploys the game server on the free tier.
-# One-time setup: Render Dashboard → New → Blueprint → point at this repo.
+# Render.com blueprint — free-tier hosting for Draw Karo.
+#
+# One-time setup:
+#   1. Push this repo to GitHub.
+#   2. Render Dashboard → New → Blueprint → pick the repo.
+#   3. Fill the `sync: false` env vars (see docs/DEPLOY.md).
+#
+# Why rootDir ".": the server imports @drawkaro/shared and @drawkaro/words,
+# so the workspace packages must be built from the repo root before the
+# server compiles. Building inside apps/server alone cannot resolve them.
 services:
+  # ── Game server (Socket.IO + Express) ────────────────────────────────────
   - type: web
     name: draw-karo-server
     runtime: node
     plan: free
-    rootDir: apps/server
-    buildCommand: npm ci --include-workspace-root=false && npm run build
-    startCommand: npm run start
+    rootDir: .
+    buildCommand: npm ci && npm run build:packages && npm run build -w @drawkaro/server
+    startCommand: node apps/server/dist/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: LIVEKIT_URL
-        sync: false # set in Render dashboard (M4)
-      - key: LIVEKIT_API_KEY
-        sync: false # set in Render dashboard (M4)
-      - key: LIVEKIT_API_SECRET
-        sync: false # set in Render dashboard (M4)
       - key: CORS_ORIGIN
         value: "*"
+      # Voice chat (M4) — leave empty until LiveKit is wired:
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+
+  # ── Web app (Expo static export) ─────────────────────────────────────────
+  - type: web
+    name: draw-karo-web
+    runtime: static
+    plan: free
+    rootDir: .
+    # EXPO_PUBLIC_* is baked in at build time by Expo — changing the server
+    # URL requires a redeploy of this service.
+    buildCommand: npm ci && npm run build:packages && cd apps/mobile && npx expo export --platform web --output-dir dist
+    staticPublishPath: apps/mobile/dist
+    envVars:
+      - key: EXPO_PUBLIC_GAME_SERVER
+        sync: false # e.g. https://draw-karo-server.onrender.com
+    routes:
+      # Expo Router uses client-side routing — send unknown paths to the app.
+      - type: rewrite
+        source: /*
+        destination: /index.html
