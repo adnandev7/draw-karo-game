@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npm run typecheck
+      - run: npm run build -w @drawkaro/server
+
+      - name: Mobile typecheck
+        working-directory: apps/mobile
+        run: npx tsc --noEmit
+
+      - name: Mobile lint
+        working-directory: apps/mobile
+        run: npx eslint src --max-warnings=0

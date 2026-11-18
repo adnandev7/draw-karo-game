@@ -15,6 +15,27 @@ packages/
   words/     Desi word packs (Bollywood, Indian Food, Memes, ...)
 ```
 
+## Play
+
+| Where | Link |
+|---|---|
+| Web | <https://draw-karo-web.onrender.com> |
+| Android APK | built with EAS — see [`docs/DEPLOY.md`](docs/DEPLOY.md) §3 |
+
+The game server is on Render's free tier, so the first visit after ~15 minutes of
+idle waits 30–60 s for a cold start. Rooms live in server memory: a restart ends
+live games.
+
+## Deploy your own (₹0)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/adnandev7/draw-karo-game)
+
+The blueprint (`render.yaml`) creates two free services: the Socket.IO game
+server and the static Expo web app. After Render asks for the `sync: false`
+variables, set `EXPO_PUBLIC_GAME_SERVER` on **draw-karo-web** to your server's
+URL. Full walkthrough, free-tier caveats and a smoke-test checklist live in
+[`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Local development (first time)
 
 ```bash
