@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { DrawTool } from "@drawkaro/shared";
 import { t } from "../lib/strings";
 import { C, F, R } from "../lib/theme";
 import { useGame } from "../store/game";
@@ -367,6 +368,7 @@ function GameView({
   const myWord = useGame((s) => s.myWord);
   const closeHint = useGame((s) => s.closeHint);
   const pushStrokeBatch = useGame((s) => s.pushStrokeBatch);
+  const pushFill = useGame((s) => s.pushFill);
   const undoStroke = useGame((s) => s.undoStroke);
   const clearCanvas = useGame((s) => s.clearCanvas);
   const sendGuess = useGame((s) => s.sendGuess);
@@ -374,7 +376,7 @@ function GameView({
   const rateDrawing = useGame((s) => s.rateDrawing);
   const [color, setColor] = useState("#111111");
   const [width, setWidth] = useState(0.014);
-  const [tool, setTool] = useState<"brush" | "eraser">("brush");
+  const [tool, setTool] = useState<DrawTool>("brush");
   const me = useMemo(
     () => room.players.find((p) => p.id === profile.profileId),
     [room.players, profile.profileId]
@@ -426,6 +428,7 @@ function GameView({
           width={width}
           tool={tool}
           onBatch={pushStrokeBatch}
+          onFill={pushFill}
         />
         {/* skribbl's thumbs over the canvas — guessers rate the drawing */}
         {!isDrawer && (room.phase === "drawing" || room.phase === "turnEnd") ? (

@@ -6,6 +6,7 @@ import type {
   AvatarDescriptor,
   BadgeUnlock,
   ChatEntry,
+  FillOp,
   LeaderboardEntry,
   RoomSettings,
   RoomState,
@@ -36,6 +37,7 @@ export type ClientToServerEvents = {
 
   // Drawing (drawer only; server validates)
   "draw:stroke": (delta: { strokeId: string; color: string; width: number; tool: Stroke["tool"]; points: Array<{ x: number; y: number }> }) => void;
+  "draw:fill": (fill: FillOp) => void;
   "draw:undo": () => void;
   "draw:clear": () => void;
 
@@ -76,6 +78,7 @@ export type ServerToClientEvents = {
   /** Everyone gets the mask; the drawer's socket also gets the chosen `word`. */
   "turn:drawing": (p: { drawerId: string; wordLength: number; word?: string }) => void;
   "draw:stroke": (delta: Parameters<ClientToServerEvents["draw:stroke"]>[0]) => void;
+  "draw:fill": (fill: FillOp) => void;
   "draw:undo": (strokeId: string | null) => void;
   "draw:clear": () => void;
 

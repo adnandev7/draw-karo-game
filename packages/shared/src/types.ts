@@ -100,13 +100,30 @@ export type ChatEntry = {
   ts: number;
 };
 
+/** Drawing tools offered in the toolbar. */
+export type DrawTool = "brush" | "eraser" | "fill";
+
 /** A drawing stroke. Coordinates normalized 0..1 (resolution independent). */
 export type Stroke = {
   id: string;
   color: string;
   width: number; // relative to canvas width, e.g. 0.01
-  tool: "brush" | "eraser";
+  tool: DrawTool;
   points: Array<{ x: number; y: number }>;
+  /**
+   * Fill ops only: PNG-encoded raster of the canvas *after* the bucket fill.
+   * Rendering it keeps every client pixel-identical (flood fill needs a
+   * bitmap, so the vector history alone can't reproduce it).
+   */
+  image?: Uint8Array;
+};
+
+/** A bucket-fill click: seed point + the filled raster. */
+export type FillOp = {
+  id: string;
+  color: string;
+  seed: { x: number; y: number };
+  image: Uint8Array;
 };
 
 export type RoomState = {

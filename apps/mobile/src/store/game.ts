@@ -7,6 +7,7 @@ import {
   DEFAULT_AVATAR,
   type AvatarDescriptor,
   type BadgeUnlock,
+  type FillOp,
   type LeaderboardEntry,
   type RoomSettings,
   type RoomState,
@@ -96,6 +97,7 @@ type GameStore = {
   updateSettings: (patch: Partial<RoomSettings>) => void;
   chooseWord: (index: number) => void;
   pushStrokeBatch: (delta: StrokeDelta) => void;
+  pushFill: (fill: FillOp) => void;
   undoStroke: () => void;
   clearCanvas: () => void;
   sendGuess: (text: string) => void;
@@ -199,6 +201,29 @@ export const useGame = create<GameStore>((set, get) => ({
     socket.emit("draw:stroke", delta);
   },
 
+  pushFill: (fill) => {
+    const room = get().room;
+    if (!room) return;
+    if (room.strokes.some((s) => s.id === fill.id)) return;
+    set({
+      room: {
+        ...room,
+        strokes: [
+          ...room.strokes,
+          {
+            id: fill.id,
+            color: fill.color,
+            width: 0,
+            tool: "fill",
+            points: [fill.seed],
+            image: fill.image,
+          },
+        ],
+      },
+    });
+    socket.emit("draw:fill", fill);
+  },
+
   undoStroke: () => {
     const room = get().room;
     if (!room || room.strokes.length === 0) return;
@@ -269,6 +294,28 @@ socket.on("draw:stroke", (delta) => {
       strokes.push(seg);
     }
     return { room: { ...s.room, strokes } };
+  });
+});
+
+socket.on("draw:fill", (fill) => {
+  useGame.setState((s) => {
+    if (!s.room || s.room.strokes.some((st) => st.id === fill.id)) return {};
+    return {
+      room: {
+        ...s.room,
+        strokes: [
+          ...s.room.strokes,
+          {
+            id: fill.id,
+            color: fill.color,
+            width: 0,
+            tool: "fill",
+            points: [fill.seed],
+            image: fill.image,
+          },
+        ],
+      },
+    };
   });
 });
 

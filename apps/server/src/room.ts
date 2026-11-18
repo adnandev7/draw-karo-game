@@ -14,6 +14,7 @@ import {
   type AvatarDescriptor,
   type ChatEntry,
   type ClientToServerEvents,
+  type FillOp,
   type GamePhase,
   type LeaderboardEntry,
   type Player,
@@ -569,6 +570,7 @@ export class Room {
     delta: { strokeId: string; color: string; width: number; tool: Stroke["tool"]; points: Array<{ x: number; y: number }> }
   ): void {
     if (this.phase !== "drawing" || this.drawerId !== senderId) return;
+    if (delta.tool === "fill") return; // fills go through addFill
     if (!delta.points || delta.points.length === 0) return;
     if (this.strokes.length > 400) return; // safety cap
     // batches of the same gesture append to one continuous stroke so
@@ -586,6 +588,29 @@ export class Room {
       });
     }
     this.toAll("draw:stroke", delta);
+  }
+
+  /**
+   * Paint-bucket fill. The drawer rasterizes the canvas locally (flood fill
+   * needs pixels), so the op carries the resulting PNG — every client just
+   * replays it, keeping fills pixel-identical everywhere.
+   */
+  addFill(senderId: string, fill: FillOp): void {
+    if (this.phase !== "drawing" || this.drawerId !== senderId) return;
+    if (!fill || typeof fill.id !== "string" || !(fill.image instanceof Uint8Array)) return;
+    if (fill.image.byteLength === 0 || fill.image.byteLength > 400_000) return;
+    if (this.strokes.length > 400) return; // safety cap shared with strokes
+    const fills = this.strokes.reduce((n, s) => n + (s.tool === "fill" ? 1 : 0), 0);
+    if (fills >= 40) return;
+    this.strokes.push({
+      id: fill.id,
+      color: fill.color,
+      width: 0,
+      tool: "fill",
+      points: [fill.seed],
+      image: fill.image,
+    });
+    this.toAll("draw:fill", fill);
   }
 
   undoStroke(senderId: string): void {

@@ -6,9 +6,10 @@
  */
 import { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import type { DrawTool } from "@drawkaro/shared";
 import { C, DRAW_COLORS, DRAW_SIZES, F, R, shade } from "../../lib/theme";
 
-type Tool = "brush" | "eraser";
+type Tool = DrawTool;
 
 type Props = {
   color: string;
@@ -22,7 +23,7 @@ type Props = {
 export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props) {
   const [sizesOpen, setSizesOpen] = useState(false);
 
-  // skribbl's keyboard shortcuts: B brush · E eraser · U undo · C clear.
+  // skribbl's keyboard shortcuts: B brush · F fill · E eraser · U undo · C clear.
   // Web-only (phones have no physical keyboard); ignored while typing in chat.
   useEffect(() => {
     if (Platform.OS !== "web") return;
@@ -36,6 +37,9 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
           break;
         case "e":
           onChange({ tool: "eraser" });
+          break;
+        case "f":
+          onChange({ tool: "fill" });
           break;
         case "u":
           onUndo();
@@ -56,7 +60,7 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
     <View style={styles.wrap}>
       {/* big current-color block (skribbl's "what am I holding" swatch) */}
       <View style={[styles.current, { backgroundColor: tool === "eraser" ? "#ffffff" : color }]}>
-        <Text style={styles.currentIcon}>{tool === "eraser" ? "🧽" : "✏️"}</Text>
+        <Text style={styles.currentIcon}>{tool === "eraser" ? "🧽" : tool === "fill" ? "🪣" : "✏️"}</Text>
       </View>
 
       {/* color grid: 2 rows of 12 */}
@@ -64,11 +68,13 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
         {[0, 1].map((row) => (
           <View key={row} style={styles.colorRow}>
             {DRAW_COLORS.slice(row * 12, row * 12 + 12).map((c) => {
-              const selected = color === c && tool === "brush";
+              const selected = color === c && tool !== "eraser";
               return (
                 <Pressable
                   key={c}
-                  onPress={() => onChange({ color: c, tool: "brush" })}
+                  // picking a colour keeps the bucket in hand — only eraser
+                  // switches back to the brush (skribbl behaviour)
+                  onPress={() => onChange({ color: c, tool: tool === "fill" ? "fill" : "brush" })}
                   style={[
                     styles.color,
                     { backgroundColor: c },
@@ -118,13 +124,19 @@ export function Toolbar({ color, width, tool, onChange, onUndo, onClear }: Props
         </Pressable>
       </View>
 
-      {/* tools with letter captions — B pencil · E eraser · U undo · C clear */}
+      {/* tools with letter captions — B pencil · F bucket · E eraser · U undo · C clear */}
       <View style={styles.tools}>
         <ToolButton
           icon="✏️"
           caption="B"
           selected={tool === "brush"}
           onPress={() => onChange({ tool: "brush" })}
+        />
+        <ToolButton
+          icon="🪣"
+          caption="F"
+          selected={tool === "fill"}
+          onPress={() => onChange({ tool: "fill" })}
         />
         <ToolButton
           icon="🧽"

@@ -109,6 +109,12 @@ io.on("connection", (socket) => {
     room.addStrokeBatch(socket.data.profileId, delta);
   });
 
+  socket.on("draw:fill", (fill) => {
+    const room = withRoom();
+    if (!room || !socket.data.profileId || !fill) return;
+    room.addFill(socket.data.profileId, fill);
+  });
+
   socket.on("draw:undo", () => {
     const room = withRoom();
     if (!room || !socket.data.profileId) return;
