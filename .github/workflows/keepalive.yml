@@ -1,6 +1,6 @@
 # Keeps the free Render server from spinning down (optional).
-# Enable by setting the repo variable GAME_SERVER_URL, e.g.
-#   https://draw-karo-server.onrender.com
+# Pings the live server. Override the target with the repo variable
+# GAME_SERVER_URL if you deploy your own copy.
 name: keepalive
 
 on:
@@ -14,8 +14,9 @@ jobs:
     steps:
       - name: Ping /health
         run: |
-          if [ -z "${{ vars.GAME_SERVER_URL }}" ]; then
-            echo "GAME_SERVER_URL repo variable not set — skipping"
-            exit 0
+          URL="${{ vars.GAME_SERVER_URL }}"
+          if [ -z "$URL" ]; then
+            URL="https://draw-karo-server.onrender.com"
           fi
-          curl -sSf --max-time 90 "${{ vars.GAME_SERVER_URL }}/health"
+          echo "Pinging $URL/health"
+          curl -sSf --max-time 90 "$URL/health"
