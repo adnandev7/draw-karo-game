@@ -9,6 +9,7 @@ import {
   type BadgeUnlock,
   type FillOp,
   type LeaderboardEntry,
+  type RoomOpResult,
   type RoomSettings,
   type RoomState,
   type Stroke,
@@ -16,6 +17,7 @@ import {
 } from "@drawkaro/shared";
 import { socket } from "../lib/socket";
 import { storageGet, storageSet } from "../lib/storage";
+import { t } from "../lib/strings";
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "error";
 
@@ -109,6 +111,30 @@ type GameStore = {
 
 let closeHintTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * The room:create / room:join request that is still waiting for the server.
+ * Kept so a cold-starting free-tier server (first connect fails, then comes
+ * up) finishes the action on its own instead of leaving the user hanging.
+ */
+type PendingAction = { kind: "create"; settings?: Partial<RoomSettings> } | { kind: "join"; code: string };
+let pendingAction: PendingAction | null = null;
+
+function runPending(): void {
+  const action = pendingAction;
+  if (!action || !socket.connected) return;
+  const profile = useGame.getState().profile;
+  const done = (res: RoomOpResult) => {
+    pendingAction = null;
+    if (res.ok) {
+      useGame.setState({ room: res.roomState, connection: "connected", errorMsg: null });
+    } else {
+      useGame.setState({ connection: "error", errorMsg: res.error });
+    }
+  };
+  if (action.kind === "create") socket.emit("room:create", action.settings ?? {}, profile, done);
+  else socket.emit("room:join", action.code, profile, done);
+}
+
 export const useGame = create<GameStore>((set, get) => ({
   profile: loadProfile(),
   connection: "idle",
@@ -139,27 +165,17 @@ export const useGame = create<GameStore>((set, get) => ({
   },
 
   createRoom: (settings) => {
+    pendingAction = { kind: "create", settings };
     set({ connection: "connecting", errorMsg: null });
     socket.connect();
-    socket.emit("room:create", settings ?? {}, get().profile, (res) => {
-      if (res.ok) {
-        set({ room: res.roomState, connection: "connected" });
-      } else {
-        set({ connection: "error", errorMsg: res.error });
-      }
-    });
+    runPending();
   },
 
   joinRoom: (code) => {
+    pendingAction = { kind: "join", code: code.trim().toUpperCase() };
     set({ connection: "connecting", errorMsg: null });
     socket.connect();
-    socket.emit("room:join", code.trim().toUpperCase(), get().profile, (res) => {
-      if (res.ok) {
-        set({ room: res.roomState, connection: "connected" });
-      } else {
-        set({ connection: "error", errorMsg: res.error });
-      }
-    });
+    runPending();
   },
 
   leaveRoom: () => {
@@ -393,6 +409,18 @@ socket.on("connect", () => {
     socket.emit("room:join", room.code, profile, (res) => {
       if (res.ok) useGame.setState({ room: res.roomState });
     });
+  } else {
+    // a create/join that was waiting on a sleeping server finishes here
+    runPending();
+  }
+});
+
+socket.on("connect_error", () => {
+  // Socket.IO keeps retrying in the background; tell the user why nothing
+  // happened instead of leaving the buttons stuck on "Connecting...".
+  const { room, connection } = useGame.getState();
+  if (!room && connection === "connecting") {
+    useGame.setState({ connection: "error", errorMsg: t.serverUnreachable });
   }
 });
 

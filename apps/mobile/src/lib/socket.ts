@@ -16,4 +16,7 @@ export type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 export const socket: GameSocket = io(SERVER_URL, {
   autoConnect: false,
   transports: ["websocket"],
+  // Fail fast instead of hanging forever: the free-tier server sleeps, and a
+  // silent spinner with no explanation is the worst possible UX there.
+  timeout: 10_000,
 });
