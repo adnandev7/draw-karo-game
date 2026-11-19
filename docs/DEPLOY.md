@@ -1,53 +1,69 @@
 # Deploying Draw Karo (₹0)
 
-Two things go live:
+Two pieces, two free hosts — because they have different shapes:
 
-| Piece | Host | Cost |
+| Piece | Host | Why |
 |---|---|---|
-| Game server (Node + Socket.IO) | Render free web service | ₹0 |
-| Web app (Expo static export) | Render free static site | ₹0 |
-| Android APK | EAS free tier (sideload via WhatsApp) | ₹0 |
+| Game server (Node + Socket.IO) | **Render** free web service | Needs a long-lived process to hold WebSockets. Vercel functions cannot. |
+| Web app (Expo static export) | **Vercel** free plan | Pure static files: fast CDN, no cold start, custom domain. |
+| Android APK | EAS free tier (sideload via WhatsApp) | No Play Store fee. |
 
 Voice chat (LiveKit) is not wired yet — the env slots exist but stay empty.
+
+Deploy order matters: the server URL is compiled into the web bundle, so
+**Render first, Vercel second**.
 
 ---
 
 ## 1. Push the repo to GitHub
 
 ```bash
-git remote add origin https://github.com/<you>/draw-karo.git
+git remote add origin https://github.com/<you>/draw-karo-game.git
 git push -u origin master
 ```
 
-## 2. Deploy on Render (blueprint)
+## 2. Game server on Render
 
-1. Render Dashboard → **New → Blueprint** → select the repo.
-2. Render reads `render.yaml` and creates **draw-karo-server** and **draw-karo-web**.
-3. Fill the `sync: false` env vars:
+1. Render Dashboard → **New → Blueprint** → pick the repo.
+2. Render reads `render.yaml` and creates **draw-karo-server** (free, Singapore).
+3. Fill the `sync: false` variables — `LIVEKIT_*` stay empty for now.
+4. Wait for the deploy, then check `https://draw-karo-server.onrender.com/health` → `ok`.
+   Copy the real URL (Render appends a suffix if the name is taken).
 
-   | Service | Variable | Value |
-   |---|---|---|
-   | draw-karo-server | `LIVEKIT_*` | leave empty for now |
-   | draw-karo-web | `EXPO_PUBLIC_GAME_SERVER` | `https://draw-karo-server.onrender.com` |
-
-4. Wait for both deploys. Server health: `https://draw-karo-server.onrender.com/health` → `ok`.
-5. Open `https://draw-karo-web.onrender.com` — create a room, join from your phone using the share link.
-
-> `EXPO_PUBLIC_GAME_SERVER` is compiled into the web bundle. If the server URL
-> changes, redeploy **draw-karo-web** (Manual Deploy → Clear build cache & deploy).
+> Every `git push` to `master` redeploys the server automatically.
 
 ### Free-tier behaviour to know
 
 - The server **spins down after ~15 min idle** → the next visitor waits ~30–60 s
-  for a cold start (the room screen shows the loading state).
-- The server keeps rooms **in memory**: a restart/deploy drops every live game.
-  Room codes are invalid after that.
-- Keeping it warm: `.github/workflows/keepalive.yml` pings `/health` every 10
-  minutes. Set the repo variable `GAME_SERVER_URL` (Settings → Secrets and
-  variables → Actions → Variables) to enable it. This uses the 750 free
-  hours/month; sleeping hours don't count.
+  for a cold start (the room screen shows its loading state).
+- Rooms live **in memory**: a deploy or restart drops every live game. Codes
+  from before the restart are invalid.
+- Keeping it warm: `.github/workflows/keepalive.yml` pings `/health` every
+  10 minutes. Set the repo variable `GAME_SERVER_URL`
+  (Settings → Secrets and variables → Actions → Variables) to enable it.
+  This fits in the 750 free hours/month; sleeping hours don't count.
 
-## 3. Android APK (sideload, no Play Store fee)
+## 3. Web app on Vercel
+
+1. Vercel Dashboard → **Add New → Project** → import the same repo.
+2. Leave **Root Directory** at the repo root — `vercel.json` drives the build:
+   - install: `npm ci`
+   - build: `npm run build:packages && cd apps/mobile && npx expo export --platform web --output-dir dist`
+   - output: `apps/mobile/dist`
+   - SPA rewrite so `/room` and `?code=XXXX` links work
+3. **Environment variable** (Production *and* Preview):
+
+   | Key | Value |
+   |---|---|
+   | `EXPO_PUBLIC_GAME_SERVER` | your Render URL, e.g. `https://draw-karo-server.onrender.com` |
+
+4. Deploy. `EXPO_PUBLIC_*` is baked in at build time — if the server URL
+   changes, edit the variable and **Redeploy**.
+
+Revenue-free extras: Vercel gives a `<project>.vercel.app` URL; a custom domain
+also costs nothing to attach if you own one.
+
+## 4. Android APK (sideload, no Play Store fee)
 
 One-time:
 
@@ -75,12 +91,13 @@ Production bundle for the Play Store later (one-time $25 developer fee):
 npx eas-cli@latest build --profile production --platform android
 ```
 
-## 4. Post-deploy smoke test
+## 5. Post-deploy smoke test
 
-1. Open the web URL on desktop → create room → copy invite link.
+1. Open the Vercel URL on desktop → create room → copy invite link.
 2. Open the link on a phone → join screen shows your card + prefilled code → Join.
+   (The link must **not** auto-join.)
 3. Start a game: word choice, drawing sync, bucket fill, guess chat, hints,
-   turn-end scores, final-round → leaderboard.
-4. Close a tab mid-game and reopen the link — the seat should be adopted
-   (same score, no ghost row).
-5. Check the server log stream in Render for errors.
+   turn-end scores, final-round → straight to the leaderboard.
+4. Close a tab mid-game and reopen the link — the seat is adopted (same score,
+   no ghost row).
+5. Check the Render log stream for errors and the Vercel build log for warnings.

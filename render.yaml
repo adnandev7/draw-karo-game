@@ -1,19 +1,24 @@
-# Render.com blueprint — free-tier hosting for Draw Karo.
+# Render.com blueprint — free-tier game server for Draw Karo.
+#
+# The web app is NOT deployed here: it is a static Expo export and lives on
+# Vercel (see `vercel.json`). Only the long-lived Socket.IO server needs a
+# always-on process, which is what Render provides.
 #
 # One-time setup:
 #   1. Push this repo to GitHub.
 #   2. Render Dashboard → New → Blueprint → pick the repo.
-#   3. Fill the `sync: false` env vars (see docs/DEPLOY.md).
+#   3. Copy the service URL (https://<name>.onrender.com) into Vercel's
+#      EXPO_PUBLIC_GAME_SERVER env var.
 #
 # Why rootDir ".": the server imports @drawkaro/shared and @drawkaro/words,
 # so the workspace packages must be built from the repo root before the
 # server compiles. Building inside apps/server alone cannot resolve them.
 services:
-  # ── Game server (Socket.IO + Express) ────────────────────────────────────
   - type: web
     name: draw-karo-server
     runtime: node
     plan: free
+    region: singapore # closest free region to India
     rootDir: .
     buildCommand: npm ci && npm run build:packages && npm run build -w @drawkaro/server
     startCommand: node apps/server/dist/index.js
@@ -31,21 +36,19 @@ services:
       - key: LIVEKIT_API_SECRET
         sync: false
 
-  # ── Web app (Expo static export) ─────────────────────────────────────────
-  - type: web
-    name: draw-karo-web
-    runtime: static
-    plan: free
-    rootDir: .
-    # EXPO_PUBLIC_* is baked in at build time by Expo — changing the server
-    # URL requires a redeploy of this service.
-    buildCommand: npm ci && npm run build:packages && cd apps/mobile && npx expo export --platform web --output-dir dist
-    staticPublishPath: apps/mobile/dist
-    envVars:
-      - key: EXPO_PUBLIC_GAME_SERVER
-        sync: false # e.g. https://draw-karo-server.onrender.com
-    routes:
-      # Expo Router uses client-side routing — send unknown paths to the app.
-      - type: rewrite
-        source: /*
-        destination: /index.html
+# Optional: keep the whole thing on Render instead of Vercel by adding the
+# static service back:
+#
+#   - type: web
+#     name: draw-karo-web
+#     runtime: static
+#     rootDir: .
+#     buildCommand: npm ci && npm run build:packages && cd apps/mobile && npx expo export --platform web --output-dir dist
+#     staticPublishPath: apps/mobile/dist
+#     envVars:
+#       - key: EXPO_PUBLIC_GAME_SERVER
+#         sync: false
+#     routes:
+#       - type: rewrite
+#         source: /*
+#         destination: /index.html

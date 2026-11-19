@@ -19,8 +19,8 @@ packages/
 
 | Where | Link |
 |---|---|
-| Web | <https://draw-karo-web.onrender.com> |
-| Android APK | built with EAS — see [`docs/DEPLOY.md`](docs/DEPLOY.md) §3 |
+| Web | Vercel (see `docs/DEPLOY.md`) |
+| Android APK | built with EAS — see [`docs/DEPLOY.md`](docs/DEPLOY.md) §4 |
 
 The game server is on Render's free tier, so the first visit after ~15 minutes of
 idle waits 30–60 s for a cold start. Rooms live in server memory: a restart ends
@@ -28,12 +28,16 @@ live games.
 
 ## Deploy your own (₹0)
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/adnandev7/draw-karo-game)
+Two hosts, because a Socket.IO server can't run on Vercel's serverless functions:
 
-The blueprint (`render.yaml`) creates two free services: the Socket.IO game
-server and the static Expo web app. After Render asks for the `sync: false`
-variables, set `EXPO_PUBLIC_GAME_SERVER` on **draw-karo-web** to your server's
-URL. Full walkthrough, free-tier caveats and a smoke-test checklist live in
+1. **Game server → Render.** [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/adnandev7/draw-karo-game)
+   The blueprint (`render.yaml`) builds the workspace packages and starts the
+   Socket.IO server.
+2. **Web app → Vercel.** Import the repo — `vercel.json` exports the Expo web
+   build to `apps/mobile/dist` with an SPA rewrite — and set
+   `EXPO_PUBLIC_GAME_SERVER` to your Render URL.
+
+Full walkthrough, free-tier caveats and a smoke-test checklist live in
 [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Local development (first time)
