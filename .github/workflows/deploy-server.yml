@@ -1,0 +1,32 @@
+name: deploy-server
+
+# Render's blueprint sync did not install a repo webhook, so pushes never
+# auto-deployed the game server. This calls the service's deploy hook instead.
+# Setup once:
+#   Render → draw-karo-server → Settings → Deploy Hook → copy the URL
+#   GitHub → Settings → Secrets and variables → Actions → New secret
+#            name: RENDER_DEPLOY_HOOK   value: <the URL>
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/server/**"
+      - "packages/**"
+      - "render.yaml"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy-server.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+            echo "RENDER_DEPLOY_HOOK secret not set — skipping (deploy manually in Render)"
+            exit 0
+          fi
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" >/dev/null
+          echo "Deploy triggered."
