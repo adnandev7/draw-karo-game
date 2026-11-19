@@ -19,7 +19,8 @@ packages/
 
 | Where | Link |
 |---|---|
-| Web | Vercel (see `docs/DEPLOY.md`) |
+| Web | **<https://draw-karo-game.vercel.app>** |
+| Game server | <https://draw-karo-server.onrender.com/health> |
 | Android APK | built with EAS — see [`docs/DEPLOY.md`](docs/DEPLOY.md) §4 |
 
 The game server is on Render's free tier, so the first visit after ~15 minutes of

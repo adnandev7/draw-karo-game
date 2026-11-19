@@ -101,3 +101,26 @@ npx eas-cli@latest build --profile production --platform android
 4. Close a tab mid-game and reopen the link — the seat is adopted (same score,
    no ghost row).
 5. Check the Render log stream for errors and the Vercel build log for warnings.
+
+## Troubleshooting
+
+**Render build: `TS7016: Could not find a declaration file for module 'express'`**
+`NODE_ENV=production` (set as a service env var) makes `npm ci` skip
+devDependencies, so TypeScript and `@types/*` never install. The blueprint uses
+`npm ci --include=dev` for this reason. If the service already exists, edit
+**Settings → Build Command** to the same value — blueprint edits do *not*
+retro-apply to a running service.
+
+**Render build: `TS5107: Option 'moduleResolution=node10' is deprecated`**
+The host picked a newer TypeScript than the repo pins. The server-side
+tsconfigs use `module`/`moduleResolution: node16`, which both TS 5.9 and 6 accept;
+`engines.node` is pinned to `22.x` so the host stops choosing Node 26.
+
+**Web app loads but Create Room spins forever**
+The server is down or cold-starting. The client gives up after 10 s, shows a
+retry message and finishes the pending create/join automatically once the socket
+connects. Check `/health` first.
+
+**Vercel project URL has a suffix** (`draw-karo-one.vercel.app`)
+The name you typed was taken; the real URL is on the project card. Set
+`EXPO_PUBLIC_GAME_SERVER` on the project you actually use and redeploy.
