@@ -20,7 +20,7 @@ services:
     plan: free
     region: singapore # closest free region to India
     rootDir: .
-    buildCommand: npm ci && npm run build:packages && npm run build -w @drawkaro/server
+    buildCommand: npm ci --include=dev && npm run build:packages && npm run build -w @drawkaro/server
     startCommand: node apps/server/dist/index.js
     healthCheckPath: /health
     envVars:
