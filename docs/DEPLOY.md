@@ -50,13 +50,20 @@ git push -u origin master
 
 ### Keep the server warm (₹0)
 
-`.github/workflows/keepalive.yml` pings `/health` every 10 minutes, but GitHub
+`.github/workflows/keepalive.yml` pings `/health` every 5 minutes, but GitHub
 scheduled workflows are **best-effort** — under load they can be delayed or
-skipped, and a missed ping lets the service sleep. Add a real pinger:
+skipped, and a missed ping lets the service sleep (measured: a sleeping server
+took 58 s to answer).
 
-1. https://cron-job.org (free, no card) → **Create cronjob**
-2. URL: `https://<your-server>.onrender.com/health`, every **5 minutes**
-3. Done. Keep the GitHub workflow as the backup.
+The primary pinger is a Google Apps Script trigger — no new account, no card,
+and Google runs it every 5 minutes. It is already set up; the project is
+**draw-karo-keepalive** at script.google.com, and the source lives in
+[`keepalive.gs`](./keepalive.gs) so it can be recreated.
+
+To move it to another server URL: open the project, edit `URL`, save.
+
+Alternatives that work equally well: cron-job.org or UptimeRobot (free, 5-minute
+interval) — pick one, not both.
 
 750 free instance-hours ≈ 744 hours in a 31-day month, so warm 24/7 just fits.
 Cold starts are survivable anyway now: rooms come back rather than vanish.
