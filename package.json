@@ -11,6 +11,7 @@
     "build:packages": "npm run build -w @drawkaro/shared && npm run build -w @drawkaro/words",
     "dev:server": "npm run dev -w @drawkaro/server",
     "start:mobile": "npm run start -w mobile",
+    "test:e2e": "npm run build:packages && npm run build -w @drawkaro/server && node apps/server/scripts/e2e.mjs",
     "typecheck": "npm run typecheck -w @drawkaro/shared && npm run typecheck -w @drawkaro/words && npm run typecheck -w @drawkaro/server"
   },
   "engines": {

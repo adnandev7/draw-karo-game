@@ -22,6 +22,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build -w @drawkaro/server
 
+      - name: 4-player socket smoke test
+        run: node apps/server/scripts/e2e.mjs
+
       - name: Mobile typecheck
         working-directory: apps/mobile
         run: npx tsc --noEmit
