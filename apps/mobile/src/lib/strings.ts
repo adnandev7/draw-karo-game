@@ -17,6 +17,8 @@ export const t = {
   joinWithCode: "Join with a code 🔑",
   backToCreate: "← Back to create room",
   connecting: "Connecting...",
+  serverWaking:
+    "Waking the server up. The free tier naps when idle — this takes up to a minute ☕",
   serverUnreachable:
     "Can't reach the game server. The free server may be waking up — it'll retry, or tap again in a moment.",
   footer: "Free forever · Share the code with friends and play 🎉",

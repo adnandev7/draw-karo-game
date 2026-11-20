@@ -112,6 +112,15 @@ type GameStore = {
 let closeHintTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
+ * A Render free instance that has gone to sleep needs 30–60 s to wake. During
+ * that window the socket keeps retrying, so stay on "Connecting..." with a
+ * one-off explanation instead of flashing a scary failure message.
+ */
+const WAKE_WINDOW_MS = 75_000;
+let connectAttemptStartedAt = 0;
+let wakeHintShown = false;
+
+/**
  * The room:create / room:join request that is still waiting for the server.
  * Kept so a cold-starting free-tier server (first connect fails, then comes
  * up) finishes the action on its own instead of leaving the user hanging.
@@ -404,6 +413,8 @@ socket.on("error", (p) => {
 socket.on("connect", () => {
   // Reconnect handling: re-join the room we were in with the same profile
   const { room, profile } = useGame.getState();
+  connectAttemptStartedAt = 0;
+  wakeHintShown = false;
   useGame.setState({ connection: room ? "connected" : "idle" });
   if (room) {
     socket.emit("room:join", room.code, profile, (res) => {
@@ -416,12 +427,22 @@ socket.on("connect", () => {
 });
 
 socket.on("connect_error", () => {
-  // Socket.IO keeps retrying in the background; tell the user why nothing
-  // happened instead of leaving the buttons stuck on "Connecting...".
+  // Socket.IO keeps retrying in the background. Inside the wake window that is
+  // expected (a sleeping free-tier server takes up to a minute), so hold the
+  // spinner and say why — only a genuinely dead server gets the error state.
   const { room, connection } = useGame.getState();
-  if (!room && connection === "connecting") {
-    useGame.setState({ connection: "error", errorMsg: t.serverUnreachable });
+  if (room || connection === "idle") return;
+  if (!connectAttemptStartedAt) connectAttemptStartedAt = Date.now();
+  if (Date.now() - connectAttemptStartedAt < WAKE_WINDOW_MS) {
+    useGame.setState({ connection: "connecting" });
+    if (!wakeHintShown) {
+      wakeHintShown = true;
+      useGame.setState({ errorMsg: t.serverWaking });
+      setTimeout(() => useGame.setState({ errorMsg: null }), 8_000);
+    }
+    return;
   }
+  useGame.setState({ connection: "error", errorMsg: t.serverUnreachable });
 });
 
 socket.on("disconnect", () => {
