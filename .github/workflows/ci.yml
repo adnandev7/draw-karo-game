@@ -14,7 +14,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -24,6 +24,9 @@ jobs:
 
       - name: 4-player socket smoke test
         run: node apps/server/scripts/e2e.mjs
+
+      - name: Restart drill (rooms survive a kill)
+        run: node apps/server/scripts/restart-test.mjs
 
       - name: Mobile typecheck
         working-directory: apps/mobile

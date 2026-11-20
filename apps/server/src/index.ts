@@ -8,6 +8,7 @@ import express, { type Express } from "express";
 import { Server } from "socket.io";
 import type { ClientToServerEvents, RoomSettings, ServerToClientEvents } from "@drawkaro/shared";
 import { RoomManager, type SocketData, type Profile } from "./room";
+import { createStore } from "./persist";
 
 const PORT = Number(process.env.PORT || 4000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
@@ -25,16 +26,20 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<never, 
   }
 );
 
-const rooms = new RoomManager(io);
+const rooms = new RoomManager(io, createStore());
 setInterval(() => rooms.sweep(), 30_000).unref();
+let restoredRooms = 0;
 
 // Health check — used by Render / uptime monitors. Defined after io init so
-// the room count is live.
+// the room count is live. `persistent` says whether rooms survive a restart.
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "draw-karo-server",
     rooms: rooms.count,
+    paused: rooms.pausedCount,
+    persistent: rooms.persistent,
+    restored: restoredRooms,
     time: new Date().toISOString(),
   });
 });
@@ -180,6 +185,31 @@ function validProfile(p: Profile | undefined): p is Profile {
   );
 }
 
-httpServer.listen(PORT, () => {
-  console.log(`[draw-karo] server listening on :${PORT}`);
-});
+// Restore persisted rooms before accepting traffic, so the first join lands
+// in the room it expects instead of racing the hydration.
+void (async () => {
+  restoredRooms = await rooms.hydrate();
+  httpServer.listen(PORT, () => {
+    console.log(`[draw-karo] server listening on :${PORT}`);
+  });
+})();
+
+/**
+ * Render sends SIGTERM on deploy with a grace window: flush every dirty room
+ * so a restart loses at most the last few seconds of strokes.
+ */
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[draw-karo] ${signal} — flushing rooms`);
+  try {
+    await rooms.flushAll();
+  } catch (err) {
+    console.warn(`[persist] flush failed: ${(err as Error).message}`);
+  }
+  httpServer.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 5_000).unref();
+}
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

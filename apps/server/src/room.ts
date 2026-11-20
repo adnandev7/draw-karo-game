@@ -28,6 +28,14 @@ import {
   type WordPackId,
 } from "@drawkaro/shared";
 import { availablePackIds, collectRoomWords, type WordEntry } from "@drawkaro/words";
+import {
+  fitSnapshot,
+  MemoryStore,
+  type RoomSnapshot,
+  type RoomStore,
+  type StoredPlayer,
+  type StoredStroke,
+} from "./persist";
 
 // ─── Socket types ────────────────────────────────────────────────────────────
 
@@ -60,6 +68,8 @@ const GAME_END_MS = 20_000;
 /** Generous reconnect window — mobile browsers/app switchers can freeze a tab
  * for minutes; skribbl's "backgrounded = kicked" annoyance must not happen. */
 const DISCONNECT_GRACE_MS = 3 * 60_000;
+/** Minimum gap between snapshot writes for one room. */
+const SAVE_INTERVAL_MS = 5_000;
 /** Hint reveal starts when this fraction of draw time remains (skribbl-style). */
 const HINT_FRACTIONS = [0.6, 0.35, 0.15];
 
@@ -101,6 +111,15 @@ export class Room {
   private usedWords = new Set<string>();
   private emptySince: number | null = null;
   onEmpty: (code: string) => void = () => {};
+  /** Called whenever something worth persisting changed (throttled by the manager). */
+  onDirty: (() => void) | null = null;
+  /**
+   * A restored room waits here until a player joins. Nothing ticks while
+   * paused: a countdown whose process died cannot be resumed honestly, so the
+   * room re-enters through a fresh phase instead (see `resume`).
+   */
+  paused = false;
+  pausedSince = 0;
 
   constructor(code: string, io: Room["io"]) {
     this.code = code;
@@ -198,6 +217,153 @@ export class Room {
 
   broadcastState(): void {
     this.toAll("room:state", this.state());
+    this.onDirty?.();
+  }
+
+  // ─── Persistence ───────────────────────────────────────────────────────────
+
+  /** Everything needed to rebuild this room in a fresh process. */
+  snapshot(): RoomSnapshot {
+    const strokes: StoredStroke[] = this.strokes.map((s) => ({
+      id: s.id,
+      color: s.color,
+      width: s.width,
+      tool: s.tool,
+      points: s.points,
+      image: s.image ? Buffer.from(s.image).toString("base64") : undefined,
+    }));
+    const players: StoredPlayer[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.score,
+      isHost: p.isHost,
+      guessedCurrent: p.guessedCurrent,
+      turnPoints: p.turnPoints,
+      guessOrder: p.guessOrder,
+      turnStartScore: p.turnStartScore,
+    }));
+    return fitSnapshot({
+      v: 1,
+      code: this.code,
+      savedAt: Date.now(),
+      settings: this.settings,
+      phase: this.phase,
+      round: this.round,
+      turn: this.turn,
+      drawerId: this.drawerId,
+      word: this.word?.word ?? null,
+      wordMask: this.wordMask,
+      hintsRevealed: this.hintsRevealed,
+      strokes,
+      chat: this.chat,
+      usedWords: [...this.usedWords],
+      players,
+    });
+  }
+
+  /** Rebuild a paused room from a snapshot. Returns null if it is unusable. */
+  static fromSnapshot(io: Room["io"], snap: RoomSnapshot): Room | null {
+    if (!snap || typeof snap.code !== "string" || snap.code.length !== 4) return null;
+    if (!Array.isArray(snap.players) || snap.players.length === 0) return null;
+
+    const room = new Room(snap.code, io);
+    room.settings = { ...DEFAULT_ROOM_SETTINGS, ...snap.settings };
+    room.phase = snap.phase ?? "lobby";
+    room.round = snap.round ?? 0;
+    room.turn = snap.turn ?? 0;
+    room.drawerId = snap.drawerId ?? null;
+    room.wordMask = snap.wordMask ?? "";
+    room.hintsRevealed = snap.hintsRevealed ?? 0;
+    room.chat = Array.isArray(snap.chat) ? snap.chat : [];
+    room.usedWords = new Set(snap.usedWords ?? []);
+    room.strokes = (snap.strokes ?? []).map((s) => ({
+      id: s.id,
+      color: s.color,
+      width: s.width,
+      tool: s.tool,
+      points: s.points,
+      image: s.image ? new Uint8Array(Buffer.from(s.image, "base64")) : undefined,
+    }));
+    for (const p of snap.players) {
+      room.players.set(p.id, {
+        ...p,
+        connected: false,
+        lastGuessTimes: [],
+        disconnectTimer: null,
+      });
+    }
+    // the word packs may have changed while we were down — resolve the word
+    // again instead of trusting a stale entry
+    if (snap.word) room.word = room.wordPool().find((w) => w.word === snap.word) ?? null;
+
+    room.paused = room.phase !== "lobby";
+    room.pausedSince = Date.now();
+    return room;
+  }
+
+  /**
+   * First player joined a restored room: pick the game back up. Timers are
+   * never resumed mid-flight — each phase restarts through its own handler, so
+   * nobody gains or loses points because of the restart.
+   */
+  resume(): void {
+    if (!this.paused) return;
+    if (![...this.players.values()].some((p) => p.connected)) return;
+
+    this.paused = false;
+    this.pausedSince = 0;
+    this.systemMsg("Server restarted — room restored ✅");
+
+    // seats that have not come back yet get the normal grace period, so a
+    // ghost drawer cannot stall the game forever
+    for (const p of this.players.values()) {
+      if (p.connected || p.disconnectTimer) continue;
+      p.disconnectTimer = setTimeout(() => {
+        const current = this.players.get(p.id);
+        if (current && !current.connected) this.finalizeRemoval(p.id);
+      }, DISCONNECT_GRACE_MS);
+    }
+
+    switch (this.phase) {
+      case "selecting": {
+        const drawer = this.drawerId ? this.players.get(this.drawerId) : null;
+        if (!drawer || !drawer.connected) {
+          this.nextTurn();
+          break;
+        }
+        this.beginSelecting(drawer.id);
+        break;
+      }
+      case "drawing":
+        // settle the aborted turn as if time had run out, then continue
+        this.endTurn();
+        break;
+      case "turnEnd":
+        this.startIdleTicker(TURN_END_MS);
+        this.broadcastState();
+        this.later(TURN_END_MS, () => this.afterTurnEnd());
+        break;
+      case "roundEnd":
+        this.startIdleTicker(ROUND_END_MS);
+        this.broadcastState();
+        this.later(ROUND_END_MS, () => {
+          this.round++;
+          this.turn = 0;
+          this.nextTurn();
+        });
+        break;
+      case "gameEnd":
+        this.startIdleTicker(GAME_END_MS);
+        this.broadcastState();
+        this.later(GAME_END_MS, () => {
+          for (const p of this.players.values()) p.score = 0;
+          this.backToLobby(null);
+        });
+        break;
+      default:
+        this.broadcastState();
+    }
   }
 
   // ─── Join / leave ──────────────────────────────────────────────────────────
@@ -254,6 +420,7 @@ export class Room {
           });
         }
       }
+      this.resume();
       this.broadcastState();
       return { ok: true, roomState: this.state() };
     }
@@ -290,6 +457,7 @@ export class Room {
       connected: true,
       guessedCurrent: false,
     });
+    this.resume();
     this.broadcastState();
     return { ok: true, roomState: this.state() };
   }
@@ -414,6 +582,11 @@ export class Room {
       return this.nextTurn();
     }
 
+    this.beginSelecting(drawerId);
+  }
+
+  /** Open a word pick for `drawerId` — also the resume path for restored rooms. */
+  private beginSelecting(drawerId: string): void {
     this.drawerId = drawerId;
     this.phase = "selecting";
     this.word = null;
@@ -588,6 +761,7 @@ export class Room {
       });
     }
     this.toAll("draw:stroke", delta);
+    this.onDirty?.();
   }
 
   /**
@@ -611,6 +785,7 @@ export class Room {
       image: fill.image,
     });
     this.toAll("draw:fill", fill);
+    this.onDirty?.();
   }
 
   undoStroke(senderId: string): void {
@@ -619,12 +794,14 @@ export class Room {
     if (!last) return;
     this.strokes = this.strokes.filter((s) => s.id !== last.id);
     this.toAll("draw:undo", last.id);
+    this.onDirty?.();
   }
 
   clearStrokes(senderId: string): void {
     if (this.phase !== "drawing" || this.drawerId !== senderId) return;
     this.strokes = [];
     this.toAll("draw:clear");
+    this.onDirty?.();
   }
 
   // ─── Guessing & chat ───────────────────────────────────────────────────────
@@ -712,6 +889,7 @@ export class Room {
     this.chat.push(entry);
     this.trimChat();
     this.toAll("chat:entry", entry);
+    this.onDirty?.();
   }
 
   // ─── Reactions ─────────────────────────────────────────────────────────────
@@ -865,6 +1043,9 @@ export class Room {
    * Long window: if everyone backgrounds at once, the room must still be
    * here when they all come back. */
   isAbandoned(): boolean {
+    // A restored room holds disconnected seats, so `players.size === 0` never
+    // becomes true — sweep it on how long it has sat paused instead.
+    if (this.paused) return this.pausedSince > 0 && now() - this.pausedSince > 10 * 60_000;
     return this.players.size === 0 && this.emptySince !== null && now() - this.emptySince > 10 * 60_000;
   }
 
@@ -885,20 +1066,46 @@ function clamp(v: number, min: number, max: number): number {
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
-  constructor(private io: Room["io"]) {}
+  private pendingSave = new Map<string, NodeJS.Timeout>();
+
+  constructor(
+    private io: Room["io"],
+    private store: RoomStore = new MemoryStore()
+  ) {}
+
+  /**
+   * Load persisted rooms before the HTTP server starts listening. Restored
+   * rooms sit paused until somebody joins.
+   */
+  async hydrate(): Promise<number> {
+    let restored = 0;
+    try {
+      for (const snap of await this.store.list()) {
+        if (!snap?.code || this.rooms.has(snap.code)) continue;
+        if (!Array.isArray(snap.players) || snap.players.length === 0) {
+          void this.store.remove(snap.code);
+          continue;
+        }
+        const room = Room.fromSnapshot(this.io, snap);
+        if (!room) continue;
+        room.onEmpty = (code) => this.drop(code, "empty");
+        room.onDirty = () => this.markDirty(room.code);
+        this.rooms.set(room.code, room);
+        restored++;
+      }
+    } catch (err) {
+      console.warn(`[persist] hydrate failed: ${(err as Error).message}`);
+    }
+    if (restored > 0) console.log(`[persist] restored ${restored} room(s)`);
+    return restored;
+  }
 
   create(): Room {
     let code = randomCode();
     while (this.rooms.has(code)) code = randomCode();
     const room = new Room(code, this.io);
-    room.onEmpty = (c) => {
-      const r = this.rooms.get(c);
-      if (r) {
-        r.destroy();
-        this.rooms.delete(c);
-        console.log(`[rooms] ${c} deleted (empty)`);
-      }
-    };
+    room.onEmpty = (c) => this.drop(c, "empty");
+    room.onDirty = () => this.markDirty(code);
     this.rooms.set(code, room);
     return room;
   }
@@ -909,15 +1116,67 @@ export class RoomManager {
 
   sweep(): void {
     for (const [code, room] of this.rooms) {
-      if (room.isAbandoned()) {
-        room.destroy();
-        this.rooms.delete(code);
-        console.log(`[rooms] ${code} deleted (swept)`);
-      }
+      if (room.isAbandoned()) this.drop(code, "swept");
     }
   }
 
   get count(): number {
     return this.rooms.size;
+  }
+
+  get pausedCount(): number {
+    let n = 0;
+    for (const room of this.rooms.values()) if (room.paused) n++;
+    return n;
+  }
+
+  get persistent(): boolean {
+    return this.store.persistent;
+  }
+
+  // ─── Snapshot writes ──────────────────────────────────────────────────────
+
+  /** One write per room per SAVE_INTERVAL_MS, with a trailing write. */
+  private markDirty(code: string): void {
+    if (!this.store.persistent) return;
+    if (this.pendingSave.has(code)) return;
+    const timer = setTimeout(() => {
+      this.pendingSave.delete(code);
+      void this.save(code);
+    }, SAVE_INTERVAL_MS);
+    timer.unref?.();
+    this.pendingSave.set(code, timer);
+  }
+
+  private async save(code: string): Promise<void> {
+    const room = this.rooms.get(code);
+    if (!room) return;
+    try {
+      await this.store.save(room.snapshot());
+    } catch (err) {
+      // a failed save must never take the game down with it
+      console.warn(`[persist] save ${code} failed: ${(err as Error).message}`);
+    }
+  }
+
+  /** Called on SIGTERM/SIGINT: write everything currently in memory. */
+  async flushAll(): Promise<void> {
+    for (const timer of this.pendingSave.values()) clearTimeout(timer);
+    this.pendingSave.clear();
+    if (!this.store.persistent) return;
+    await Promise.all([...this.rooms.keys()].map((code) => this.save(code)));
+  }
+
+  private drop(code: string, reason: string): void {
+    const room = this.rooms.get(code);
+    const timer = this.pendingSave.get(code);
+    if (timer) clearTimeout(timer);
+    this.pendingSave.delete(code);
+    room?.destroy();
+    this.rooms.delete(code);
+    if (this.store.persistent) {
+      void this.store.remove(code).catch(() => undefined);
+    }
+    console.log(`[rooms] ${code} deleted (${reason})`);
   }
 }

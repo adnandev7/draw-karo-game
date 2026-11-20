@@ -28,6 +28,12 @@ services:
         value: production
       - key: CORS_ORIGIN
         value: "*"
+      # Room persistence (Upstash Redis REST). Both empty ⇒ memory-only: rooms
+      # die on restart and /health reports "persistent": false.
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
       # Voice chat (M4) — leave empty until LiveKit is wired:
       - key: LIVEKIT_URL
         sync: false

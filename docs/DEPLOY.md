@@ -27,7 +27,11 @@ git push -u origin master
 1. Render Dashboard → **New → Blueprint** → pick the repo.
 2. Render reads `render.yaml` and creates **draw-karo-server** (free, Singapore).
 3. Fill the `sync: false` variables — `LIVEKIT_*` stay empty for now.
-4. Wait for the deploy, then check `https://draw-karo-server.onrender.com/health` → `ok`.
+4. **Persistence (2 minutes, free):** https://console.upstash.com → **Redis →
+   Create** (free, no card) → copy *UPSTASH_REDIS_REST_URL* and
+   *UPSTASH_REDIS_REST_TOKEN* → Render → **Environment** → add both → save
+   (that redeploys). Without them `/health` reports `"persistent": false`.
+5. Wait for the deploy, then check `https://draw-karo-server.onrender.com/health` → `ok`.
    Copy the real URL (Render appends a suffix if the name is taken).
 
 > Every `git push` to `master` redeploys the server automatically.
@@ -36,12 +40,26 @@ git push -u origin master
 
 - The server **spins down after ~15 min idle** → the next visitor waits ~30–60 s
   for a cold start (the room screen shows its loading state).
-- Rooms live **in memory**: a deploy or restart drops every live game. Codes
-  from before the restart are invalid.
-- Keeping it warm: `.github/workflows/keepalive.yml` pings `/health` every
-  10 minutes. Set the repo variable `GAME_SERVER_URL`
-  (Settings → Secrets and variables → Actions → Variables) to enable it.
-  This fits in the 750 free hours/month; sleeping hours don't count.
+- **Rooms survive restarts and cold starts.** With `UPSTASH_*` configured, every
+  room is snapshotted every few seconds and restored at boot (paused, then
+  resumed on the first join). Without those variables the process falls back to
+  memory only — fine for local dev, not for production.
+- Run `npm run test:restart` before deploying anything that touches room state:
+  it kills a live server with `SIGKILL` and checks the room, scores and turn
+  come back.
+
+### Keep the server warm (₹0)
+
+`.github/workflows/keepalive.yml` pings `/health` every 10 minutes, but GitHub
+scheduled workflows are **best-effort** — under load they can be delayed or
+skipped, and a missed ping lets the service sleep. Add a real pinger:
+
+1. https://cron-job.org (free, no card) → **Create cronjob**
+2. URL: `https://<your-server>.onrender.com/health`, every **5 minutes**
+3. Done. Keep the GitHub workflow as the backup.
+
+750 free instance-hours ≈ 744 hours in a 31-day month, so warm 24/7 just fits.
+Cold starts are survivable anyway now: rooms come back rather than vanish.
 
 ## 3. Web app on Vercel
 
