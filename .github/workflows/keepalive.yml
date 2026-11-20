@@ -1,11 +1,15 @@
-# Keeps the free Render server from spinning down (optional).
+# Keeps the free Render server from spinning down (backup path).
+# GitHub cron is best-effort: it can be delayed or skipped under load, so treat
+# a real pinger (cron-job.org / UptimeRobot, every 5 min) as the primary and
+# this as the safety net. See docs/DEPLOY.md → "Keep the server warm".
 # Pings the live server. Override the target with the repo variable
 # GAME_SERVER_URL if you deploy your own copy.
 name: keepalive
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # every 5 minutes — Render sleeps at 15, so two misses in a row are fatal
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
