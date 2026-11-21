@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Draw Karo — Scan to Play!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Fredoka:wght@500;700&family=Bangers&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF4D8D;
+    --orange:#FF8A3D;
+    --yellow:#FFD93D;
+    --mint:#3DDC97;
+    --blue:#4D7CFF;
+    --purple:#9B5CFF;
+    --ink:#1a1a2e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Fredoka',system-ui,sans-serif;
+    background: linear-gradient(120deg,#FF4D8D,#FF8A3D,#FFD93D,#3DDC97,#4D7CFF,#9B5CFF);
+    background-size: 400% 400%;
+    animation: bgShift 12s ease infinite;
+    overflow:hidden;
+    color:var(--ink);
+  }
+  @keyframes bgShift{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
+
+  /* floating doodles */
+  .doodle{
+    position:fixed;
+    pointer-events:none;
+    font-size: clamp(24px,4vw,48px);
+    filter: drop-shadow(2px 2px 0 #1a1a2e);
+    animation: float 6s ease-in-out infinite;
+    z-index:1;
+    user-select:none;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0) rotate(0deg)}
+    50%{transform:translateY(-28px) rotate(12deg)}
+  }
+
+  /* paint splashes */
+  .splash{
+    position:fixed;
+    border-radius:50%;
+    filter: blur(2px);
+    opacity:.55;
+    animation: splash 8s ease-in-out infinite;
+    z-index:0;
+    pointer-events:none;
+  }
+  @keyframes splash{
+    0%,100%{transform:scale(1) rotate(0deg)}
+    50%{transform:scale(1.25) rotate(45deg)}
+  }
+
+  /* confetti */
+  .confetti{
+    position:fixed;
+    width:12px;height:18px;
+    top:-20px;
+    animation: fall linear infinite;
+    z-index:1;
+    pointer-events:none;
+    border-radius:2px;
+  }
+  @keyframes fall{
+    0%{transform:translateY(-20px) rotate(0deg);opacity:1}
+    100%{transform:translateY(110vh) rotate(720deg);opacity:.9}
+  }
+
+  .stage{
+    position:relative;
+    z-index:2;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    text-align:center;
+    gap:18px;
+  }
+
+  .title{
+    font-family:'Luckiest Guy',cursive;
+    font-size: clamp(48px,11vw,120px);
+    line-height:.9;
+    color:#fff;
+    text-shadow:
+      0 4px 0 #1a1a2e,
+      0 8px 0 rgba(0,0,0,.15),
+      4px 4px 0 var(--pink);
+    animation: bounce 1.6s ease-in-out infinite;
+    letter-spacing:2px;
+  }
+  @keyframes bounce{
+    0%,100%{transform:translateY(0) scale(1)}
+    50%{transform:translateY(-10px) scale(1.03)}
+  }
+  .title span{display:inline-block;animation:wobble 2s ease-in-out infinite}
+  .title span:nth-child(2){animation-delay:.1s;color:var(--yellow)}
+  .title span:nth-child(3){animation-delay:.2s;color:var(--mint)}
+  .title span:nth-child(4){animation-delay:.3s;color:var(--blue)}
+  .title span:nth-child(5){animation-delay:.4s;color:var(--orange)}
+  .title span:nth-child(6){animation-delay:.5s;color:var(--pink)}
+  @keyframes wobble{
+    0%,100%{transform:rotate(0deg)}
+    25%{transform:rotate(-6deg)}
+    75%{transform:rotate(6deg)}
+  }
+
+  .subtitle{
+    font-family:'Bangers',cursive;
+    font-size: clamp(20px,3.5vw,34px);
+    color:#fff;
+    text-shadow:0 3px 0 #1a1a2e;
+    background: rgba(0,0,0,.18);
+    padding:6px 18px;
+    border-radius:999px;
+    backdrop-filter: blur(4px);
+  }
+
+  .qr-frame{
+    position:relative;
+    background:#fff;
+    border:8px solid #1a1a2e;
+    border-radius:28px;
+    padding:18px;
+    box-shadow: 12px 12px 0 #1a1a2e, 0 0 0 6px var(--yellow);
+    animation: wobbleFrame 3.2s ease-in-out infinite;
+    transform-origin:center;
+  }
+  @keyframes wobbleFrame{
+    0%,100%{transform:rotate(-2deg) scale(1)}
+    50%{transform:rotate(2deg) scale(1.02)}
+  }
+  .qr-frame img{
+    display:block;
+    width: clamp(180px,26vw,280px);
+    height: clamp(180px,26vw,280px);
+    border-radius:12px;
+  }
+  .qr-label{
+    margin-top:10px;
+    font-family:'Bangers',cursive;
+    font-size:22px;
+    color:var(--ink);
+  }
+
+  /* googly eyes on frame */
+  .eye{
+    position:absolute;
+    top:-18px;
+    width:42px;height:42px;
+    background:#fff;
+    border:4px solid #1a1a2e;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    animation: blink 4s infinite;
+  }
+  .eye.left{left:24px}
+  .eye.right{right:24px}
+  .pupil{
+    width:16px;height:16px;
+    background:#1a1a2e;
+    border-radius:50%;
+    animation: look 3s ease-in-out infinite;
+  }
+  @keyframes blink{
+    0%,46%,54%,100%{transform:scaleY(1)}
+    50%{transform:scaleY(.1)}
+  }
+  @keyframes look{
+    0%,100%{transform:translate(-3px,-2px)}
+    50%{transform:translate(3px,2px)}
+  }
+
+  .tag{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size: clamp(14px,2vw,18px);
+    color:#fff;
+    text-shadow:0 2px 0 #1a1a2e;
+    background:linear-gradient(90deg,var(--pink),var(--purple));
+    padding:10px 22px;
+    border-radius:999px;
+    border:4px solid #1a1a2e;
+    box-shadow:6px 6px 0 #1a1a2e;
+  }
+
+  .footer{
+    position:fixed;
+    bottom:14px;
+    left:0;right:0;
+    text-align:center;
+    font-family:'Fredoka',sans-serif;
+    font-weight:500;
+    font-size:13px;
+    color:#fff;
+    text-shadow:0 2px 0 #1a1a2e;
+    z-index:2;
+  }
+
+  @media (max-width:600px){
+    .title{font-size:clamp(40px,13vw,72px)}
+  }
+</style>
+</head>
+<body>
+  <!-- splashes -->
+  <div class="splash" style="width:220px;height:220px;background:var(--pink);top:-60px;left:-40px"></div>
+  <div class="splash" style="width:180px;height:180px;background:var(--yellow);bottom:-50px;right:-30px;animation-delay:2s"></div>
+  <div class="splash" style="width:140px;height:140px;background:var(--mint);top:20%;right:5%;animation-delay:4s"></div>
+  <div class="splash" style="width:120px;height:120px;background:var(--blue);bottom:15%;left:8%;animation-delay:1s"></div>
+
+  <!-- doodles -->
+  <div class="doodle" style="top:8%;left:6%;animation-delay:0s">🎨</div>
+  <div class="doodle" style="top:12%;right:8%;animation-delay:1.2s">✏️</div>
+  <div class="doodle" style="bottom:14%;left:10%;animation-delay:2.1s">🖌️</div>
+  <div class="doodle" style="bottom:10%;right:6%;animation-delay:.6s">⭐</div>
+  <div class="doodle" style="top:30%;left:3%;animation-delay:1.7s">🌈</div>
+  <div class="doodle" style="top:28%;right:4%;animation-delay:2.4s">🎭</div>
+  <div class="doodle" style="bottom:22%;left:45%;animation-delay:3s;font-size:28px">✨</div>
+
+  <div class="stage">
+    <h1 class="title">
+      <span>D</span><span>R</span><span>A</span><span>W</span> <span>K</span><span>A</span><span>R</span><span>O</span>
+    </h1>
+    <div class="subtitle">Scan to download the app &amp; play! 🎮</div>
+
+    <div class="qr-frame">
+      <div class="eye left"><div class="pupil"></div></div>
+      <div class="eye right"><div class="pupil"></div></div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=https%3A%2F%2Fexpo.dev%2Fartifacts%2Feas%2FEbYgyBUqNVvQmVfNdraKvGXEU1OCGgeAfOPGz0POBqI.apk" alt="Draw Karo APK QR code" />
+      <div class="qr-label">Android APK — free forever</div>
+    </div>
+
+  <div class="footer">Draw Karo — draw-and-guess party game · Share the code, play with friends 🎉</div>
+
+  <script>
+    // confetti
+    const colors=['#FF4D8D','#FF8A3D','#FFD93D','#3DDC97','#4D7CFF','#9B5CFF','#fff'];
+    for(let i=0;i<40;i++){
+      const c=document.createElement('div');
+      c.className='confetti';
+      c.style.left=Math.random()*100+'vw';
+      c.style.background=colors[Math.floor(Math.random()*colors.length)];
+      c.style.animationDuration=(4+Math.random()*5)+'s';
+      c.style.animationDelay=(Math.random()*6)+'s';
+      c.style.width=(8+Math.random()*10)+'px';
+      c.style.height=(10+Math.random()*14)+'px';
+      document.body.appendChild(c);
+    }
+  </script>
+</body>
+</html>

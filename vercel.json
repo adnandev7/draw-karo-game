@@ -6,6 +6,14 @@
   "outputDirectory": "apps/mobile/dist",
   "rewrites": [
     {
+      "source": "/download",
+      "destination": "https://expo.dev/artifacts/eas/EbYgyBUqNVvQmVfNdraKvGXEU1OCGgeAfOPGz0POBqI.apk"
+    },
+    {
+      "source": "/apk",
+      "destination": "https://expo.dev/artifacts/eas/EbYgyBUqNVvQmVfNdraKvGXEU1OCGgeAfOPGz0POBqI.apk"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
