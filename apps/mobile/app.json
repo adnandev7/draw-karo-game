@@ -53,11 +53,18 @@
         }
       ],
       "@config-plugins/react-native-webrtc",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "18ee3356-80a8-4b35-b1b7-3272b22774fc"
+      }
+    },
+    "owner": "adnanexpo777"
   }
 }
