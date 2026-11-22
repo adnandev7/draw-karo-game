@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/download",
-      "destination": "https://expo.dev/artifacts/eas/EbYgyBUqNVvQmVfNdraKvGXEU1OCGgeAfOPGz0POBqI.apk"
+      "destination": "https://expo.dev/artifacts/eas/qYph-QLurThZy5lFPLPvjTIaErzd94q74n2Y5ZS6rcw.apk"
     },
     {
       "source": "/apk",
-      "destination": "https://expo.dev/artifacts/eas/EbYgyBUqNVvQmVfNdraKvGXEU1OCGgeAfOPGz0POBqI.apk"
+      "destination": "https://expo.dev/artifacts/eas/qYph-QLurThZy5lFPLPvjTIaErzd94q74n2Y5ZS6rcw.apk"
     },
     {
       "source": "/(.*)",
