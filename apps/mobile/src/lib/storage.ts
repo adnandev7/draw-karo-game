@@ -65,12 +65,25 @@ if (Platform.OS === "web") {
 } else {
   // Lazy require keeps the web bundle free of native imports
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { MMKV } = require("react-native-mmkv");
-  const mmkv = new MMKV({ id: "draw-karo" });
+  let mmkv: { getString: (k: string) => string | undefined; set: (k: string, v: string) => void; delete: (k: string) => void } | null = null;
+  try {
+    const { MMKV } = require("react-native-mmkv");
+    mmkv = new MMKV({ id: "draw-karo" });
+  } catch (e) {
+    console.warn("MMKV unavailable, falling back to in-memory storage:", e);
+    mmkv = null;
+  }
+  const mem = new Map<string, string>();
   impl = {
-    getString: (key) => mmkv.getString(key),
-    set: (key, value) => mmkv.set(key, value),
-    delete: (key) => mmkv.delete(key),
+    getString: (key) => (mmkv ? mmkv.getString(key) : mem.get(key)),
+    set: (key, value) => {
+      if (mmkv) mmkv.set(key, value);
+      else mem.set(key, value);
+    },
+    delete: (key) => {
+      if (mmkv) mmkv.delete(key);
+      else mem.delete(key);
+    },
   };
 }
 

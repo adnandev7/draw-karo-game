@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { Stack, DefaultTheme, ThemeProvider } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -19,6 +19,28 @@ import { preloadSkiaWeb } from "../lib/skiaLoader";
  * hold the Stack until it's ready. Nunito (our UI font) loads in the same
  * gate. On native both resolve quickly.
  */
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error("DrawKaro crashed:", error, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#124da5" }}>
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: 12 }}>
+            Something went wrong
+          </Text>
+          <Text style={{ color: "#fff", fontSize: 12, textAlign: "center" }}>
+            {this.state.error.message}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function RootLayout() {
   const [skiaReady, setSkiaReady] = useState(Platform.OS !== "web");
   const [fontsLoaded] = useFonts({
@@ -53,23 +75,25 @@ export default function RootLayout() {
   const ready = skiaReady && fontsLoaded;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider value={DefaultTheme}>
-          {ready ? (
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="room" />
-            </Stack>
-          ) : (
-            <View style={styles.splash}>
-              <ActivityIndicator size="large" color="#53e237" />
-              <Text style={styles.splashText}>Draw Karo</Text>
-            </View>
-          )}
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <ThemeProvider value={DefaultTheme}>
+            {ready ? (
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="room" />
+              </Stack>
+            ) : (
+              <View style={styles.splash}>
+                <ActivityIndicator size="large" color="#53e237" />
+                <Text style={styles.splashText}>Draw Karo</Text>
+              </View>
+            )}
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
 
