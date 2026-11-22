@@ -53,15 +53,6 @@
           "imageWidth": 76
         }
       ],
-      [
-        "@livekit/react-native-expo-plugin",
-        {
-          "android": {
-            "audioType": "communication"
-          }
-        }
-      ],
-      "@config-plugins/react-native-webrtc",
       "expo-font",
       "expo-web-browser"
     ],
