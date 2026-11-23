@@ -760,7 +760,9 @@ export class Room {
         points: delta.points,
       });
     }
-    this.toAll("draw:stroke", delta);
+    const sock = this.sockets.get(senderId);
+    if (sock) (sock as any).to(this.channel).emit("draw:stroke", delta);
+    else this.toAll("draw:stroke", delta);
     this.onDirty?.();
   }
 
@@ -784,7 +786,9 @@ export class Room {
       points: [fill.seed],
       image: fill.image,
     });
-    this.toAll("draw:fill", fill);
+    const sock = this.sockets.get(senderId);
+    if (sock) (sock as any).to(this.channel).emit("draw:fill", fill);
+    else this.toAll("draw:fill", fill);
     this.onDirty?.();
   }
 
@@ -793,14 +797,18 @@ export class Room {
     const last = this.strokes[this.strokes.length - 1];
     if (!last) return;
     this.strokes = this.strokes.filter((s) => s.id !== last.id);
-    this.toAll("draw:undo", last.id);
+    const sock = this.sockets.get(senderId);
+    if (sock) (sock as any).to(this.channel).emit("draw:undo", last.id);
+    else this.toAll("draw:undo", last.id);
     this.onDirty?.();
   }
 
   clearStrokes(senderId: string): void {
     if (this.phase !== "drawing" || this.drawerId !== senderId) return;
     this.strokes = [];
-    this.toAll("draw:clear");
+    const sock = this.sockets.get(senderId);
+    if (sock) (sock as any).to(this.channel).emit("draw:clear");
+    else this.toAll("draw:clear");
     this.onDirty?.();
   }
 
