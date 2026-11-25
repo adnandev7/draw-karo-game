@@ -384,19 +384,21 @@ function GameView({
   const seconds = Math.ceil(room.timeLeftMs / 1000);
   const waiting = room.phase === "turnEnd" || room.phase === "roundEnd" || room.phase === "gameEnd";
 
-  // Mobile-web keyboard fix: when guess field has focus, pin the game container
-  // to the visual viewport so the browser can't scroll the canvas out of view.
+  // Mobile-web keyboard fix: when the guess field has focus, pin document.body
+  // to the visual viewport height so Chrome can't scroll the canvas out of
+  // view. The input sits at the bottom, visible above the keyboard.
   const [inputFocused, setInputFocused] = useState(false);
-  const [webVh, setWebVh] = useState<number | null>(null);
   useEffect(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const sync = () => setWebVh(Math.round(vv.height));
-    sync();
-    vv.addEventListener("resize", sync);
-    return () => vv.removeEventListener("resize", sync);
-  }, []);
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    if (inputFocused) {
+      const vv = window.visualViewport;
+      document.body.style.overflow = "hidden";
+      document.body.style.height = `${vv?.height ?? window.innerHeight}px`;
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+    }
+  }, [inputFocused]);
 
   const gameBar = (
     <GameBar
@@ -511,11 +513,10 @@ function GameView({
     <View
       style={[
         styles.gameNarrow,
-        // Pin game container to visual viewport when keyboard is open so the
-        // browser can't scroll the canvas out of view above the keyboard.
+        // Prevent scroll when keyboard is open so canvas stays visible
         kb && Platform.OS === "web"
           ? {
-              height: webVh || window.innerHeight,
+              height: "100%",
               overflow: "hidden",
             }
           : {},
