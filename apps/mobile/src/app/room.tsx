@@ -515,10 +515,6 @@ function GameView({
         // browser can't scroll the canvas out of view above the keyboard.
         kb && Platform.OS === "web"
           ? {
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
               height: webVh || window.innerHeight,
               overflow: "hidden",
             }
