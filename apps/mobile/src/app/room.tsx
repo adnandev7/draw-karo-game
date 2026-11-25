@@ -384,6 +384,20 @@ function GameView({
   const seconds = Math.ceil(room.timeLeftMs / 1000);
   const waiting = room.phase === "turnEnd" || room.phase === "roundEnd" || room.phase === "gameEnd";
 
+  // Mobile-web keyboard fix: when guess field has focus, pin the game container
+  // to the visual viewport so the browser can't scroll the canvas out of view.
+  const [inputFocused, setInputFocused] = useState(false);
+  const [webVh, setWebVh] = useState<number | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => setWebVh(Math.round(vv.height));
+    sync();
+    vv.addEventListener("resize", sync);
+    return () => vv.removeEventListener("resize", sync);
+  }, []);
+
   const gameBar = (
     <GameBar
       round={room.round}
@@ -492,12 +506,29 @@ function GameView({
     );
   }
 
+  const kb = Platform.OS === "web" && inputFocused;
   return (
-    <View style={styles.gameNarrow}>
+    <View
+      style={[
+        styles.gameNarrow,
+        // Pin game container to visual viewport when keyboard is open so the
+        // browser can't scroll the canvas out of view above the keyboard.
+        kb && Platform.OS === "web"
+          ? {
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: webVh || window.innerHeight,
+              overflow: "hidden",
+            }
+          : {},
+      ]}
+    >
       {gameBar}
-      {playersBlock}
+      {kb ? null : playersBlock}
       {canvasBlock}
-      <View style={styles.narrowChat}>
+      <View style={kb ? styles.narrowChatKeyboard : styles.narrowChat}>
         <ChatPanel
           entries={room.chat}
           isDrawer={isDrawer}
@@ -505,6 +536,8 @@ function GameView({
           onSubmit={sendGuess}
           closeHint={closeHint}
           focusKey={`${room.round}:${room.turn}`}
+          compact={kb}
+          onFocusChange={setInputFocused}
         />
       </View>
       <LeaveButton floating />
@@ -754,6 +787,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   narrowChat: { flex: 1, minHeight: 140, marginBottom: 30 },
+  narrowChatKeyboard: { flex: 0, minHeight: 48, marginBottom: 4 },
 
   leave: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 12 },
   leaveFloating: {

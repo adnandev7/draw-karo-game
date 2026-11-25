@@ -20,9 +20,13 @@ type Props = {
   closeHint?: string | null;
   /** Changes each turn/round — refocuses the field so typing lands instantly. */
   focusKey?: string;
+  /** Mobile-web: hide the message list so canvas + input fit above the keyboard. */
+  compact?: boolean;
+  /** Notifies the room when the guess field gains/loses focus (keyboard handling). */
+  onFocusChange?: (focused: boolean) => void;
 };
 
-export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHint, focusKey }: Props) {
+export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHint, focusKey, compact, onFocusChange }: Props) {
   const [text, setText] = useState("");
   const listRef = useRef<FlatList<ChatEntry>>(null);
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -61,14 +65,15 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
 
   return (
     <View style={styles.wrap}>
-      <FlatList
-        ref={listRef}
-        data={[...entries].reverse()}
-        inverted
-        keyExtractor={(e) => e.id}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => {
+      {!compact ? (
+        <FlatList
+          ref={listRef}
+          data={[...entries].reverse()}
+          inverted
+          keyExtractor={(e) => e.id}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => {
           const alt = index % 2 === 1;
           return (
             <View
@@ -97,7 +102,8 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
             </View>
           );
         }}
-      />
+        />
+      ) : null}
       {toast ? (
         <View style={styles.guessedBanner}>
           <Text style={styles.guessedText}>{t.youGuessed}</Text>
@@ -121,6 +127,8 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
               onSubmitEditing={submit}
               returnKeyType="send"
               blurOnSubmit={false}
+              onFocus={() => onFocusChange?.(true)}
+              onBlur={() => onFocusChange?.(false)}
             />
             <Pressable onPress={submit} style={styles.send}>
               <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
