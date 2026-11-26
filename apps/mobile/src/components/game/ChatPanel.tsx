@@ -63,19 +63,33 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
     return () => clearTimeout(id);
   }, [focusKey]);
 
-  // Mobile-web keyboard fix: on touch (before Chrome scrolls to the input),
-  // pin document.body to the visual viewport height so the canvas stays at the
-  // top and the input stays at the bottom above the keyboard. On blur, restore.
-  const pinBody = () => {
+  // Mobile-web keyboard fix: on touchstart (before Chrome scrolls to the input),
+  // lock document.body so the browser cannot scroll the canvas out of view.
+  // On blur, restore normal scrolling.
+  const lockBody = () => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
-    const vv = window.visualViewport;
+    document.body.style.position = "fixed";
+    document.body.style.top = "-" + window.scrollY + "px";
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
-    document.body.style.height = `${vv?.height ?? window.innerHeight}px`;
+    const vv = window.visualViewport;
+    document.body.style.height = (vv?.height ?? window.innerHeight) + "px";
   };
-  const releaseBody = () => {
+  const unlockBody = () => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const scrollY = document.body.style.top;
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
     document.body.style.overflow = "";
     document.body.style.height = "";
+    if (scrollY) {
+      window.scrollTo(0, parseInt(scrollY.replace("px", "")) || 0);
+    }
   };
 
   const submit = () => {
@@ -106,10 +120,10 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
                   numberOfLines={2}
                 >
                   {item.kind === "system"
-                    ? `— ${item.text} —`
+                    ? "— " + item.text + " —"
                     : item.kind === "reaction"
-                      ? `${item.playerName} ${item.text}`
-                      : `${item.playerName}: ${item.text}`}
+                      ? item.playerName + " " + item.text
+                      : item.playerName + ": " + item.text}
                 </Text>
               </View>
             );
@@ -140,14 +154,14 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
               returnKeyType="send"
               blurOnSubmit={false}
               onFocus={() => {
-                pinBody();
+                lockBody();
                 onFocusChange?.(true);
               }}
               onBlur={() => {
-                releaseBody();
+                unlockBody();
                 onFocusChange?.(false);
               }}
-              onTouchStart={pinBody}
+              onTouchStart={lockBody}
             />
             <Pressable onPress={submit} style={styles.send}>
               <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
