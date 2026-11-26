@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Room screen — renders lobby or game based on the server phase.
  * Wide screens get skribbl's layout: players sidebar · canvas · chat.
  * Narrow screens stack vertically. All state comes from the store.
@@ -384,21 +384,11 @@ function GameView({
   const seconds = Math.ceil(room.timeLeftMs / 1000);
   const waiting = room.phase === "turnEnd" || room.phase === "roundEnd" || room.phase === "gameEnd";
 
-  // Mobile-web keyboard fix: when the guess field has focus, pin document.body
-  // to the visual viewport height so Chrome can't scroll the canvas out of
-  // view. The input sits at the bottom, visible above the keyboard.
+  // Mobile-web keyboard fix: when guess field has focus, hide the player
+  // strip and chat history so canvas + input both fit above the keyboard.
+  // Body pinning is handled in ChatPanel.tsx (onTouchStart / onFocus /
+  // onBlur) so it applies before Chrome can scroll.
   const [inputFocused, setInputFocused] = useState(false);
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    if (inputFocused) {
-      const vv = window.visualViewport;
-      document.body.style.overflow = "hidden";
-      document.body.style.height = `${vv?.height ?? window.innerHeight}px`;
-    } else {
-      document.body.style.overflow = "";
-      document.body.style.height = "";
-    }
-  }, [inputFocused]);
 
   const gameBar = (
     <GameBar

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chat + guess panel — skribbl-style light chat: alternating rows,
  * green rows for correct guesses, system lines in dim italic.
  */
@@ -49,12 +49,34 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
 
   // Web only: keep the cursor in the guess field so typed keys land in it
   // without clicking first (a fresh turn/round refocuses after the overlay).
-  // Native skips this — auto-focus would pop the keyboard over the canvas.
+  // Skip auto-focus on mobile-web/touch devices — popping the keyboard hides
+  // the drawing pane. Typers there can tap the field themselves.
   useEffect(() => {
     if (Platform.OS !== "web") return;
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(pointer: coarse)").matches
+    ) {
+      return;
+    }
     const id = setTimeout(() => inputRef.current?.focus(), 60);
     return () => clearTimeout(id);
   }, [focusKey]);
+
+  // Mobile-web keyboard fix: on touch (before Chrome scrolls to the input),
+  // pin document.body to the visual viewport height so the canvas stays at the
+  // top and the input stays at the bottom above the keyboard. On blur, restore.
+  const pinBody = () => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const vv = window.visualViewport;
+    document.body.style.overflow = "hidden";
+    document.body.style.height = `${vv?.height ?? window.innerHeight}px`;
+  };
+  const releaseBody = () => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    document.body.style.overflow = "";
+    document.body.style.height = "";
+  };
 
   const submit = () => {
     const t2 = text.trim();
@@ -74,34 +96,24 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
           style={styles.list}
           contentContainerStyle={styles.listContent}
           renderItem={({ item, index }) => {
-          const alt = index % 2 === 1;
-          return (
-            <View
-              style={[
-                styles.row,
-                alt && styles.rowAlt,
-                item.kind === "correct" && styles.rowCorrect,
-                item.playerId === "drawer-hidden" && styles.hidden,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.line,
-                  item.kind === "system" && styles.system,
-                  item.kind === "correct" && styles.correctText,
-                  item.kind === "reaction" && styles.reactionLine,
-                ]}
-                numberOfLines={2}
+            const alt = index % 2 === 1;
+            return (
+              <View
+                style={[styles.row, alt && styles.rowAlt, item.kind === "correct" && styles.rowCorrect, item.playerId === "drawer-hidden" && styles.hidden]}
               >
-                {item.kind === "system"
-                  ? `— ${item.text} —`
-                  : item.kind === "reaction"
-                    ? `${item.playerName} ${item.text}`
-                    : `${item.playerName}: ${item.text}`}
-              </Text>
-            </View>
-          );
-        }}
+                <Text
+                  style={[styles.line, item.kind === "system" && styles.system, item.kind === "correct" && styles.correctText, item.kind === "reaction" && styles.reactionLine]}
+                  numberOfLines={2}
+                >
+                  {item.kind === "system"
+                    ? `— ${item.text} —`
+                    : item.kind === "reaction"
+                      ? `${item.playerName} ${item.text}`
+                      : `${item.playerName}: ${item.text}`}
+                </Text>
+              </View>
+            );
+          }}
         />
       ) : null}
       {toast ? (
@@ -127,8 +139,15 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
               onSubmitEditing={submit}
               returnKeyType="send"
               blurOnSubmit={false}
-              onFocus={() => onFocusChange?.(true)}
-              onBlur={() => onFocusChange?.(false)}
+              onFocus={() => {
+                pinBody();
+                onFocusChange?.(true);
+              }}
+              onBlur={() => {
+                releaseBody();
+                onFocusChange?.(false);
+              }}
+              onTouchStart={pinBody}
             />
             <Pressable onPress={submit} style={styles.send}>
               <Text style={styles.sendText}>{isDrawer ? "💬" : "🎯"}</Text>
