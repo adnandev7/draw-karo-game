@@ -527,7 +527,9 @@ function GameView({
           onFocusChange={setInputFocused}
         />
       </View>
-      <LeaveButton floating />
+      {/* floating leave would sit on top of the guess input while the
+          keyboard is open — dismiss the keyboard first to leave */}
+      {kb ? null : <LeaveButton floating />}
     </View>
   );
 }
@@ -774,7 +776,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   narrowChat: { flex: 1, minHeight: 140, marginBottom: 30 },
-  narrowChatKeyboard: { flex: 0, minHeight: 48, marginBottom: 4 },
+  // keyboard mode: mini chat strip (last few messages) + input, clamped so
+  // the drawing pane above keeps its space (skribbl-style)
+  narrowChatKeyboard: { flex: 0, maxHeight: 116, marginBottom: 4 },
 
   leave: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 12 },
   leaveFloating: {

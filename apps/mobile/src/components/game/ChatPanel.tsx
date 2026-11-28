@@ -123,8 +123,20 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
     setText("");
   };
 
+  // one line of chat text, shared by the full list and the compact strip
+  const entryText = (item: ChatEntry) =>
+    item.kind === "system"
+      ? "— " + item.text + " —"
+      : item.kind === "reaction"
+        ? item.playerName + " " + item.text
+        : item.playerName + ": " + item.text;
+
+  // skribbl: while the keyboard is open you still see the latest messages
+  // above the guess field (no scrolling — just the last few lines)
+  const recent = compact ? entries.slice(-3) : [];
+
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, compact && styles.wrapCompact]}>
       {!compact ? (
         <FlatList
           ref={listRef}
@@ -143,17 +155,32 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
                   style={[styles.line, item.kind === "system" && styles.system, item.kind === "correct" && styles.correctText, item.kind === "reaction" && styles.reactionLine]}
                   numberOfLines={2}
                 >
-                  {item.kind === "system"
-                    ? "— " + item.text + " —"
-                    : item.kind === "reaction"
-                      ? item.playerName + " " + item.text
-                      : item.playerName + ": " + item.text}
+                  {entryText(item)}
                 </Text>
               </View>
             );
           }}
         />
-      ) : null}
+      ) : (
+        <View style={styles.miniList}>
+          {recent.map((item, idx) => {
+            const alt = idx % 2 === 1;
+            return (
+              <View
+                key={item.id}
+                style={[styles.row, styles.miniRow, alt && styles.rowAlt, item.kind === "correct" && styles.rowCorrect, item.playerId === "drawer-hidden" && styles.hidden]}
+              >
+                <Text
+                  style={[styles.line, styles.miniLine, item.kind === "system" && styles.system, item.kind === "correct" && styles.correctText, item.kind === "reaction" && styles.reactionLine]}
+                  numberOfLines={1}
+                >
+                  {entryText(item)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
       {toast ? (
         <View style={styles.guessedBanner}>
           <Text style={styles.guessedText}>{t.youGuessed}</Text>
@@ -207,8 +234,20 @@ const styles = StyleSheet.create({
     borderColor: C.panelBorder,
     overflow: "hidden",
   },
+  // keyboard mode: let the strip size to its content (messages + input)
+  wrapCompact: { minHeight: 0 },
   list: { flex: 1 },
   listContent: { paddingVertical: 2 },
+  // compact strip: last few messages, newest next to the input
+  miniList: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+    paddingHorizontal: 4,
+    paddingTop: 4,
+    gap: 2,
+  },
+  miniRow: { paddingVertical: 1, paddingHorizontal: 6 },
+  miniLine: { fontSize: 11 },
   row: {
     paddingHorizontal: 10,
     paddingVertical: 3,
