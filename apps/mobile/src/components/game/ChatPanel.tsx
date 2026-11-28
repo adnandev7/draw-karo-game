@@ -63,32 +63,56 @@ export function ChatPanel({ entries, isDrawer, guessedCurrent, onSubmit, closeHi
     return () => clearTimeout(id);
   }, [focusKey]);
 
-  // Mobile-web keyboard fix: on touchstart (before Chrome scrolls to the input),
-  // lock document.body so the browser cannot scroll the canvas out of view.
-  // On blur, restore normal scrolling.
-  const lockBody = () => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    document.body.style.position = "fixed";
-    document.body.style.top = "-" + window.scrollY + "px";
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
-    document.body.style.overflow = "hidden";
+  // Mobile-web keyboard fix (skribbl-style): while the guess field is
+  // focused, lock BOTH <html> and <body> so the browser cannot scroll or
+  // show a scrollbar, and pin the layout height to the visual viewport so
+  // canvas + input stay visible above the keyboard. A visualViewport
+  // resize/scroll listener keeps the height correct as the keyboard
+  // animates in/out. On blur everything is restored.
+  const lockedRef = useRef(false);
+  const savedScrollY = useRef(0);
+  const vvListener = useRef<(() => void) | null>(null);
+
+  const syncViewportHeight = () => {
+    if (typeof document === "undefined") return;
     const vv = window.visualViewport;
     document.body.style.height = (vv?.height ?? window.innerHeight) + "px";
+    // Chrome pans the visual viewport when the keyboard opens — snap it back
+    // so the page never "glides" toward the chat.
+    if (vv && vv.offsetTop > 0) window.scrollTo(0, savedScrollY.current);
+  };
+
+  const lockBody = () => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    if (!lockedRef.current) {
+      lockedRef.current = true;
+      savedScrollY.current = window.scrollY;
+      document.documentElement.classList.add("kb-lock");
+      document.body.classList.add("kb-lock");
+      document.body.style.top = "-" + savedScrollY.current + "px";
+      document.body.style.width = "100%";
+    }
+    syncViewportHeight();
+    if (!vvListener.current) {
+      vvListener.current = syncViewportHeight;
+      window.visualViewport?.addEventListener("resize", syncViewportHeight);
+      window.visualViewport?.addEventListener("scroll", syncViewportHeight);
+    }
   };
   const unlockBody = () => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    const scrollY = document.body.style.top;
-    document.body.style.position = "";
-    document.body.style.top = "";
-    document.body.style.left = "";
-    document.body.style.right = "";
-    document.body.style.width = "";
-    document.body.style.overflow = "";
-    document.body.style.height = "";
-    if (scrollY) {
-      window.scrollTo(0, parseInt(scrollY.replace("px", "")) || 0);
+    if (Platform.OS === "web" && typeof document !== "undefined" && lockedRef.current) {
+      lockedRef.current = false;
+      if (vvListener.current) {
+        window.visualViewport?.removeEventListener("resize", syncViewportHeight);
+        window.visualViewport?.removeEventListener("scroll", syncViewportHeight);
+        vvListener.current = null;
+      }
+      document.documentElement.classList.remove("kb-lock");
+      document.body.classList.remove("kb-lock");
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.height = "";
+      window.scrollTo(0, savedScrollY.current);
     }
   };
 

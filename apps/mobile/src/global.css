@@ -1,3 +1,20 @@
+/* Mobile-web keyboard lock — applied while the guess input is focused.
+   !important beats the inline Expo template rules (body { overflow: hidden }
+   etc.), kills every scrollbar and freezes the page so Chrome cannot scroll
+   the drawing pane out of view when the keyboard opens. */
+html.kb-lock,
+html.kb-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+html.kb-lock body {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  /* JS keeps this in sync with visualViewport.height */
+}
+
 :root {
   --font-display:
     Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
