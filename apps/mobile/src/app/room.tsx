@@ -1,6 +1,6 @@
 ﻿/**
- * Room screen — renders lobby or game based on the server phase.
- * Wide screens get skribbl's layout: players sidebar · canvas · chat.
+ * Room screen ÔÇö renders lobby or game based on the server phase.
+ * Wide screens get skribbl's layout: players sidebar ┬À canvas ┬À chat.
  * Narrow screens stack vertically. All state comes from the store.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -40,11 +40,11 @@ import {
 
 const WIDE = 860;
 
-/** Reaction chips — standard corny set, kept in sync with the server's allowlist. */
-const REACTION_CHIPS = ["❤️", "😂", "😮", "😱", "🔥", "👏"] as const;
+/** Reaction chips ÔÇö standard corny set, kept in sync with the server's allowlist. */
+const REACTION_CHIPS = ["ÔØñ´©Å", "­ƒÿé", "­ƒÿ«", "­ƒÿ▒", "­ƒöÑ", "­ƒæÅ"] as const;
 
 /**
- * Floating emoji over the canvas — fires on any reaction:broadcast
+ * Floating emoji over the canvas ÔÇö fires on any reaction:broadcast
  * (reactions, likes and dislikes all ride the same event).
  * Remounts per reaction (keyed by ts) so each bubble animates fresh.
  */
@@ -106,7 +106,7 @@ export default function RoomScreen() {
 
   const wide = width >= WIDE;
   // clear space for system gesture bars / notches / notification panels so
-  // they never overlap our UI (zero on web — browsers don't need it)
+  // they never overlap our UI (zero on web ÔÇö browsers don't need it)
   const insets = useSafeAreaInsets();
   // clamp column widths to the viewport so nothing can overflow
   const sideW = Math.min(280, Math.max(190, Math.round(width * 0.21)));
@@ -175,7 +175,7 @@ export default function RoomScreen() {
   );
 }
 
-// ─── Lobby ────────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Lobby ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function LobbyView({
   isHost,
@@ -194,7 +194,7 @@ function LobbyView({
   const sendChat = useGame((s) => s.sendChat);
   const canStart = room.players.length >= 2;
 
-  // shareable link — deep-links straight into the join screen with the code filled
+  // shareable link ÔÇö deep-links straight into the join screen with the code filled
   const inviteLink =
     Platform.OS === "web"
       ? `${window.location.origin}/?code=${room.code}`
@@ -249,7 +249,7 @@ function LobbyView({
             onPress={startGame}
           >
             <Text style={styles.startText}>
-              {!canStart ? t.needPlayers : "Start Game! 🚀"}
+              {!canStart ? t.needPlayers : "Start Game! ­ƒÜÇ"}
             </Text>
           </Pressable>
         </>
@@ -330,7 +330,7 @@ function LobbyView({
             onPress={startGame}
           >
             <Text style={styles.startText}>
-              {!canStart ? t.needPlayers : "Start Game! 🚀"}
+              {!canStart ? t.needPlayers : "Start Game! ­ƒÜÇ"}
             </Text>
           </Pressable>
         </>
@@ -350,7 +350,7 @@ function LobbyView({
   );
 }
 
-// ─── Game ─────────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Game ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function GameView({
   isDrawer,
@@ -384,12 +384,6 @@ function GameView({
   const seconds = Math.ceil(room.timeLeftMs / 1000);
   const waiting = room.phase === "turnEnd" || room.phase === "roundEnd" || room.phase === "gameEnd";
 
-  // Mobile-web keyboard fix: when guess field has focus, hide the player
-  // strip and chat history so canvas + input both fit above the keyboard.
-  // Body pinning is handled in ChatPanel.tsx (onTouchStart / onFocus /
-  // onBlur) so it applies before Chrome can scroll.
-  const [inputFocused, setInputFocused] = useState(false);
-
   const gameBar = (
     <GameBar
       round={room.round}
@@ -412,7 +406,7 @@ function GameView({
     />
   );
 
-  // skribbl: every non-drawer can react while the drawing is live —
+  // skribbl: every non-drawer can react while the drawing is live ÔÇö
   // guessed players included
   const reactionChips = !isDrawer && room.phase === "drawing" ? (
     <View style={styles.reactionRow}>
@@ -436,7 +430,7 @@ function GameView({
           onBatch={pushStrokeBatch}
           onFill={pushFill}
         />
-        {/* skribbl's thumbs over the canvas — guessers rate the drawing */}
+        {/* skribbl's thumbs over the canvas ÔÇö guessers rate the drawing */}
         {!isDrawer && (room.phase === "drawing" || room.phase === "turnEnd") ? (
           <View style={styles.rateRow} pointerEvents="box-none">
             <Pressable
@@ -444,14 +438,14 @@ function GameView({
               accessibilityLabel={t.likeDrawing}
               onPress={() => rateDrawing("like")}
             >
-              <Text style={styles.rateEmoji}>👍</Text>
+              <Text style={styles.rateEmoji}>­ƒæì</Text>
             </Pressable>
             <Pressable
               style={styles.rateBtn}
               accessibilityLabel={t.dislikeDrawing}
               onPress={() => rateDrawing("dislike")}
             >
-              <Text style={styles.rateEmoji}>👎</Text>
+              <Text style={styles.rateEmoji}>­ƒæÄ</Text>
             </Pressable>
           </View>
         ) : null}
@@ -498,24 +492,12 @@ function GameView({
     );
   }
 
-  const kb = Platform.OS === "web" && inputFocused;
   return (
-    <View
-      style={[
-        styles.gameNarrow,
-        // Prevent scroll when keyboard is open so canvas stays visible
-        kb && Platform.OS === "web"
-          ? {
-              height: "100%",
-              overflow: "hidden",
-            }
-          : {},
-      ]}
-    >
+    <View style={styles.gameNarrow}>
       {gameBar}
-      {kb ? null : playersBlock}
+      {playersBlock}
       {canvasBlock}
-      <View style={kb ? styles.narrowChatKeyboard : styles.narrowChat}>
+      <View style={styles.narrowChat}>
         <ChatPanel
           entries={room.chat}
           isDrawer={isDrawer}
@@ -523,8 +505,6 @@ function GameView({
           onSubmit={sendGuess}
           closeHint={closeHint}
           focusKey={`${room.round}:${room.turn}`}
-          compact={kb}
-          onFocusChange={setInputFocused}
         />
       </View>
       <LeaveButton floating />
@@ -532,7 +512,7 @@ function GameView({
   );
 }
 
-/** Small pill that copies its value and flashes "Copied!" — code or link. */
+/** Small pill that copies its value and flashes "Copied!" ÔÇö code or link. */
 function CopyBtn({ label, value }: { label: string; value: string }) {
   const [done, setDone] = useState(false);
   const copy = async () => {
@@ -542,7 +522,7 @@ function CopyBtn({ label, value }: { label: string; value: string }) {
       setDone(true);
       setTimeout(() => setDone(false), 1400);
     } catch {
-      // clipboard permission denied — the code is visible above anyway
+      // clipboard permission denied ÔÇö the code is visible above anyway
     }
   };
   return (
@@ -559,7 +539,7 @@ function LeaveButton({ floating }: { floating?: boolean }) {
   const leaveRoom = useGame((s) => s.leaveRoom);
   const btn = (
     <Pressable style={styles.leave} onPress={leaveRoom}>
-      <Text style={styles.leaveText}>🚪 Leave</Text>
+      <Text style={styles.leaveText}>­ƒÜ¬ Leave</Text>
     </Pressable>
   );
   if (!floating) return btn;
@@ -572,7 +552,7 @@ function LeaveButton({ floating }: { floating?: boolean }) {
   );
 }
 
-// ─── Shared bits ──────────────────────────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Shared bits ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function Stepper({
   label,
@@ -592,7 +572,7 @@ function Stepper({
       <Text style={styles.settingLabel}>{label}</Text>
       <View style={styles.stepControls}>
         <Pressable style={styles.stepBtn} onPress={() => onChange(Math.max(1, value - step))}>
-          <Text style={styles.stepBtnText}>−</Text>
+          <Text style={styles.stepBtnText}>ÔêÆ</Text>
         </Pressable>
         <Text style={styles.stepValue}>{value}</Text>
         <Pressable style={styles.stepBtn} onPress={() => onChange(Math.min(max, value + step))}>
@@ -774,7 +754,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   narrowChat: { flex: 1, minHeight: 140, marginBottom: 30 },
-  narrowChatKeyboard: { flex: 0, minHeight: 48, marginBottom: 4 },
 
   leave: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 12 },
   leaveFloating: {
